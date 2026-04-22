@@ -84,3 +84,28 @@ body {
     );
   }
 }
+
+/* ----------------------------------------------------------------
+   Star ping-pong bounce — applied via className so transition covers
+   both color and transform in one declaration (Tailwind can't express
+   a multi-property transition with different easings inline).
+   ---------------------------------------------------------------- */
+.star-bounce {
+  transition:
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.15s ease;
+}
+
+/* ----------------------------------------------------------------
+   Quote price-change flash
+   ---------------------------------------------------------------- */
+@keyframes quote-flash-up {
+  0%   { background-color: rgba(0, 255, 136, 0.18); }
+  100% { background-color: transparent; }
+}
+@keyframes quote-flash-down {
+  0%   { background-color: rgba(239, 68, 68, 0.18); }
+  100% { background-color: transparent; }
+}
+.quote-flash-up   { animation: quote-flash-up   0.9s ease-out forwards; }
+.quote-flash-down { animation: quote-flash-down 0.9s ease-out forwards; }
