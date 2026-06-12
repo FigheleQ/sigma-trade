@@ -86,7 +86,7 @@ features:
     max_articles_per_batch: 15
 
     # How long to keep articles in memory (hours)
-    retention_hours: 48
+    retention_hours: 24
 
     # Include general market news (not ticker-specific)
     include_market_news: true
@@ -127,7 +127,7 @@ features:
   ui:
     dark_mode: true
     agent_workspace_position: 'right'
-    show_debug_panel: true # dev only
+    show_debug_panel: false
 
 # ----------------------------------------------------------
 # Development settings

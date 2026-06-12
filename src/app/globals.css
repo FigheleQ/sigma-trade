@@ -42,46 +42,52 @@ body {
    AI Analysis Block — animated conic-gradient border
    ---------------------------------------------------------------- */
 
+/* Composited shimmer — pseudo-element + transform (GPU only, no paint) */
 .ai-analysis-block {
   position: relative;
   padding: 1px;
   border-radius: 8px;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 255, 136, 0.5) 0%,
-    rgba(0, 255, 136, 0.15) 25%,
-    rgba(0, 255, 136, 0.5) 50%,
-    rgba(0, 255, 136, 0.15) 75%,
-    rgba(0, 255, 136, 0.5) 100%
-  );
-  background-size: 300% 300%;
-  animation: ai-border-shimmer 6s linear infinite;
+  background: rgba(0, 255, 136, 0.25);
+  overflow: hidden;
 }
 
-.ai-analysis-block[data-in-view="false"] {
+.ai-analysis-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 255, 136, 0.55) 50%,
+    transparent 100%
+  );
+  animation: ai-shimmer 3s linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.ai-analysis-block[data-in-view="false"]::before {
   animation-play-state: paused;
 }
 
 .ai-analysis-inner {
+  position: relative;
+  z-index: 1;
   background: #0a0d0b;
   border-radius: 7px;
   padding: 10px 12px;
   color: #ffffff;
 }
 
-@keyframes ai-border-shimmer {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 300% 50%; }
+@keyframes ai-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-analysis-block {
+  .ai-analysis-block::before {
     animation: none;
-    background: linear-gradient(
-      135deg,
-      rgba(0, 255, 136, 0.4) 0%,
-      rgba(0, 255, 136, 0.2) 100%
-    );
+    background: none;
   }
 }
 

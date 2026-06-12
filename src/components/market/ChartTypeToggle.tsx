@@ -21,6 +21,8 @@ export default function ChartTypeToggle() {
           key={type}
           onClick={() => setChartType(type)}
           title={label}
+          aria-label={`Switch to ${label} chart`}
+          aria-pressed={chartType === type}
           className={cn(
             'flex items-center gap-1 px-2 py-1 font-mono text-[10px] transition-colors duration-150',
             chartType === type
