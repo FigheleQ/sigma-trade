@@ -72,6 +72,7 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 							}}
 							disabled={isDisabled}
 							title={isDisabled ? 'Coming in Phase 2' : agent.name}
+							aria-label={isDisabled ? `${agent.name} — coming in Phase 2` : agent.name}
 							className={cn(
 								'relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center',
 								'bg-bg-panel border border-border-subtle',

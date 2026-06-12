@@ -38,3 +38,6 @@ Thumbs.db
 
 # Claude Code
 Docs/CLAUDE.md
+
+# Isolated prod build (Lighthouse measurement)
+.next-prod
