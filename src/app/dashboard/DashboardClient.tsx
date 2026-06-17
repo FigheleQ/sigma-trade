@@ -55,10 +55,12 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch }: 
     const onMove = (e: MouseEvent) => {
       if (!desktopRef.current) return;
       const { left, width } = desktopRef.current.getBoundingClientRect();
-      const leftPct = ((e.clientX - left) / width) * 100;
-      setRightPct(
-        Math.min(MAX_RIGHT_PCT, Math.max(MIN_RIGHT_PCT, 100 - leftPct)),
-      );
+      // Uchwyt = lewa krawędź panelu newsów. Prawa krawędź panelu kończy się
+      // przy stałej kolumnie ikon (SIDEBAR_PX), więc szerokość newsów liczymy
+      // od kursora do początku ikon.
+      const newsWidthPx = left + width - SIDEBAR_PX - e.clientX;
+      const pct = (newsWidthPx / width) * 100;
+      setRightPct(Math.min(MAX_RIGHT_PCT, Math.max(MIN_RIGHT_PCT, pct)));
     };
     const onUp = () => setIsResizing(false);
     document.addEventListener('mousemove', onMove);
@@ -114,26 +116,31 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch }: 
           />
         )}
 
-        {/* Prawy panel — treść agenta + kolumna ikon */}
+        {/* Panel treści agenta — animuje szerokość (0 ↔ rightPct%).
+            Oddzielony od kolumny ikon, żeby ta nie znikała przy zamykaniu
+            i nie gubiła hovera/podświetlenia. */}
         <div
-          className={cn('flex shrink-0 overflow-hidden', !isResizing && 'transition-[width] duration-200 ease-in-out')}
-          style={{ width: panelOpen ? `${rightPct}%` : `${SIDEBAR_PX}px` }}
+          className={cn(
+            'shrink-0 overflow-hidden',
+            !isResizing && 'transition-[width] duration-200 ease-in-out',
+          )}
+          style={{ width: panelOpen ? `${rightPct}%` : '0px' }}
         >
-          {/* Treść (NewsFeed / przyszłe widoki agentów) */}
-          {panelOpen && (
-            <div className="flex-1 overflow-hidden min-w-0">
+          {activeAgent && (
+            <div className="h-full w-full overflow-hidden">
               <NewsFeed intervalSeconds={intervalSeconds} autoFetch={autoFetch} />
             </div>
           )}
+        </div>
 
-          {/* Kolumna ikon — zawsze widoczna */}
-          <div className="w-20 shrink-0 border-l border-border-subtle overflow-y-auto">
-            <AgentSidebar
-              agents={agents}
-              activeAgent={activeAgent}
-              onAgentChange={handleAgentChange}
-            />
-          </div>
+        {/* Kolumna ikon — NA STAŁE przypięta do prawej krawędzi.
+            Nigdy nie animuje ani nie znika → hover działa zawsze. */}
+        <div className="w-20 shrink-0 border-l border-border-subtle overflow-y-auto">
+          <AgentSidebar
+            agents={agents}
+            activeAgent={activeAgent}
+            onAgentChange={handleAgentChange}
+          />
         </div>
       </div>
 

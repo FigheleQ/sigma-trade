@@ -95,7 +95,7 @@ export default function MarketView() {
   return (
     <div className="flex h-full overflow-hidden">
       {/* Ticker sidebar */}
-      <div className="hidden md:block">
+      <div className="hidden md:block shrink-0">
         <TickerSidebar />
       </div>
 

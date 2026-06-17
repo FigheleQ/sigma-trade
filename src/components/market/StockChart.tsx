@@ -132,8 +132,10 @@ export default function StockChart({
 		const isMobile = window.innerWidth < 768;
 		const chart = createChart(containerRef.current, {
 			...CHART_OPTS,
-			width: containerRef.current.clientWidth,
-			height: containerRef.current.clientHeight,
+			// autoSize — biblioteka sama śledzi rozmiar kontenera własnym
+			// ResizeObserverem; niezawodne przy animowanej zmianie szerokości
+			// panelu (np. otwarcie News Agenta), gdzie ręczny RO bywał zawodny.
+			autoSize: true,
 			handleScroll: isMobile ? false : true,
 			handleScale: isMobile ? false : true,
 		});
@@ -158,10 +160,12 @@ export default function StockChart({
 			tooltipRef.current.style.top = `${param.point.y - 30}px`;
 		});
 
-		// Resize observer — react to container size changes
-		const ro = new ResizeObserver((entries) => {
-			const { width, height } = entries[0].contentRect;
-			chart.applyOptions({ width, height });
+		// autoSize zmienia wymiary canvasu, ale NIE przelicza odstępu słupków —
+		// przy zwężeniu prawa część danych zostaje ucięta. Po każdej zmianie
+		// szerokości wymuszamy fitContent(), by całość zmieściła się w nowej
+		// szerokości (np. gdy panel News Agenta odbiera miejsce wykresowi).
+		const ro = new ResizeObserver(() => {
+			chartRef.current?.timeScale().fitContent();
 		});
 		ro.observe(containerRef.current);
 
