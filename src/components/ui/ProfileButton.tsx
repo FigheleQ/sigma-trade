@@ -76,7 +76,6 @@ export default function ProfileButton({ email }: { email: string }) {
                 "transition-colors duration-100",
                 "hover:bg-white/5 hover:text-gray-100",
               )}
-              onClick={() => setOpen(false)}
             >
               Sign Out
             </button>
