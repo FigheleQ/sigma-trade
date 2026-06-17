@@ -3,7 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
-export default function ProfileButton() {
+function getInitials(email: string): string {
+  const local = email.split("@")[0] ?? "";
+  const letters = local.replace(/[^a-zA-Z]/g, "");
+  return (letters.slice(0, 2) || "??").toUpperCase();
+}
+
+export default function ProfileButton({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -17,11 +23,15 @@ export default function ProfileButton() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const initials = getInitials(email);
+  const displayName = email.split("@")[0] ?? email;
+
   return (
     <div ref={ref} className="relative flex items-center gap-3">
       {/* Welcome text */}
       <span className="font-mono text-xs text-gray-400 tracking-wide">
-        Welcome, <span className="text-gray-200 font-semibold">Jack</span>
+        Welcome,{" "}
+        <span className="text-gray-200 font-semibold">{displayName}</span>
       </span>
 
       {/* Avatar button */}
@@ -39,7 +49,7 @@ export default function ProfileButton() {
         aria-label="Profile menu"
         aria-expanded={open}
       >
-        JK
+        {initials}
       </button>
 
       {/* Dropdown */}
@@ -55,18 +65,21 @@ export default function ProfileButton() {
         >
           <DropdownItem
             label="My Profile"
-            onClick={() => {
-              console.log("My Profile");
-              setOpen(false);
-            }}
+            onClick={() => setOpen(false)}
           />
-          <DropdownItem
-            label="Sign Out"
-            onClick={() => {
-              console.log("Sign Out");
-              setOpen(false);
-            }}
-          />
+          <form action="/api/auth/signout" method="post">
+            <button
+              type="submit"
+              className={cn(
+                "w-full text-left px-5 py-2",
+                "font-mono text-xs text-gray-300 tracking-wide",
+                "transition-colors duration-100",
+                "hover:bg-white/5 hover:text-gray-100",
+              )}
+            >
+              Sign Out
+            </button>
+          </form>
         </div>
       )}
     </div>
@@ -93,7 +106,7 @@ function DropdownItem({
         "font-mono text-xs text-gray-300 tracking-wide",
         "transition-colors duration-100",
         "hover:bg-white/5 hover:text-gray-100",
-        pressed && "bg-white/10 text-white scale-[0.98]",
+        pressed && "bg-white/10 text-white scale-[0-98]",
       )}
     >
       {label}

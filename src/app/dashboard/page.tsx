@@ -1,7 +1,11 @@
 import { loadConfig } from '@/lib/config';
 import DashboardClient from './DashboardClient';
 import { type AgentId, type AgentMeta } from '@/components/agents/AgentSidebar';
+import { createClient } from '@/lib/supabase/server';
 export default async function DashboardPage() {
+	const supabase = await createClient();
+	const { data: { user } } = await supabase.auth.getUser();
+
 	const config = loadConfig();
 	const tickers = config.watchlist.tickers;
 	const features = config.features;
@@ -50,6 +54,7 @@ export default async function DashboardPage() {
 			agents={agents}
 			intervalSeconds={features.news_agent.fetch_interval_seconds}
 			autoFetch={features.news_agent.auto_fetch}
+			userEmail={user?.email ?? ''}
 		/>
 	);
 }

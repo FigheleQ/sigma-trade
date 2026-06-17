@@ -35,3 +35,8 @@ Thumbs.db
 .vercel
 .vercel/
 .env*.local
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress.env.json

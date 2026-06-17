@@ -197,7 +197,7 @@ export default function StockChart({
 		chartRef.current?.timeScale().fitContent();
 		// reset scroll do prawej (najnowsze dane) przy zmianie danych
 		setScrollOffset(data.length - 1);
-	}, [data]);
+	}, [data, chartType]);
 
 	// Ręczna obsługa dotyku na mobile — niezawodny tooltip ceny
 	useEffect(() => {

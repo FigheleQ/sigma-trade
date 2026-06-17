@@ -16,6 +16,7 @@ interface Props {
 	agents: AgentMeta[];
 	intervalSeconds: number;
 	autoFetch: boolean;
+	userEmail: string;
 }
 
 export default function DashboardClient({
@@ -23,6 +24,7 @@ export default function DashboardClient({
 	agents,
 	intervalSeconds,
 	autoFetch,
+	userEmail,
 }: Props) {
 	const [activeAgent, setActiveAgent] = useState<AgentId | null>(null);
 	return (
@@ -44,7 +46,7 @@ export default function DashboardClient({
 						</span>
 					</div>
 				</div>
-				<ProfileButton />
+				<ProfileButton email={userEmail} />
 			</header>
 
 			{/* Main 2-panel layout */}
