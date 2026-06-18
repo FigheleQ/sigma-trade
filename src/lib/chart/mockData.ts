@@ -22,8 +22,10 @@ function makeRng(seed: number) {
   };
 }
 
+// Awaryjna baza, gdy nie znamy realnej ceny (brak quote). Tylko orientacyjne —
+// NIE są aktualizowane i nie powinny być traktowane jak realne dane.
 const BASE_PRICES: Record<string, number> = {
-  AAPL: 185, MSFT: 420, GOOGL: 175, TSLA: 190, NVDA: 880,
+  AAPL: 185, MSFT: 420, GOOGL: 175, TSLA: 190, NVDA: 200,
 };
 
 const TIMEFRAME_CANDLES: Record<Timeframe, number> = {
@@ -34,11 +36,23 @@ const TIMEFRAME_CANDLES: Record<Timeframe, number> = {
   '1Y': 52,
 };
 
-export function generateMockCandles(symbol: string, timeframe: Timeframe): Candle[] {
+/**
+ * Deterministyczny mock świec. Jeśli podano `anchorPrice` (realna cena z quote),
+ * cała seria jest skalowana tak, by OSTATNIA świeca zamykała się dokładnie na tej
+ * cenie — dzięki temu wykres-fallback trzyma się realnej wartości zamiast
+ * sztywnej, nieaktualnej bazy.
+ */
+export function generateMockCandles(
+  symbol: string,
+  timeframe: Timeframe,
+  anchorPrice?: number,
+): Candle[] {
   const count = TIMEFRAME_CANDLES[timeframe];
   const seed = hashString(`${symbol}:${timeframe}`);
   const rng = makeRng(seed);
-  const basePrice = BASE_PRICES[symbol] ?? 100;
+  const basePrice = anchorPrice && anchorPrice > 0
+    ? anchorPrice
+    : (BASE_PRICES[symbol] ?? 100);
 
   // Determine time step in seconds
   const stepSeconds: Record<Timeframe, number> = {
@@ -79,6 +93,22 @@ export function generateMockCandles(symbol: string, timeframe: Timeframe): Candl
     });
 
     price = close;
+  }
+
+  // Jeśli mamy kotwicę — przeskaluj całą serię tak, by ostatnia świeca
+  // zamknęła się dokładnie na realnej cenie. Mnożymy (nie dodajemy), żeby
+  // zachować relacje OHLC i dodatnie wartości.
+  if (anchorPrice && anchorPrice > 0 && candles.length > 0) {
+    const lastClose = candles[candles.length - 1].close;
+    if (lastClose > 0) {
+      const factor = anchorPrice / lastClose;
+      for (const c of candles) {
+        c.open = +(c.open * factor).toFixed(2);
+        c.high = +(c.high * factor).toFixed(2);
+        c.low = +(c.low * factor).toFixed(2);
+        c.close = +(c.close * factor).toFixed(2);
+      }
+    }
   }
 
   return candles;

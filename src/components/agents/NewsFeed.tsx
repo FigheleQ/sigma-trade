@@ -86,7 +86,7 @@ function ArticleCard({
       className={cn(
         'px-4 py-3 border-b border-border-subtle cursor-pointer transition-colors',
         'hover:bg-bg-panel',
-        isRead && !isAnalyzing ? 'opacity-50' : 'opacity-100',
+        isRead && !isAnalyzing && !isAnalyzed ? 'opacity-50' : 'opacity-100',
         article.urgency === 'critical' && !isRead && 'border-l-2 border-l-red-500',
         article.urgency === 'high' && !isRead && 'border-l-2 border-l-amber-500',
       )}
@@ -328,6 +328,7 @@ export default function NewsFeed({ intervalSeconds, autoFetch }: NewsFeedProps) 
               fetchStatus === 'fetching' && 'opacity-40 cursor-not-allowed',
             )}
             title="Fetch now"
+            aria-label="Fetch news now"
           >
             <RefreshCw size={13} className={fetchStatus === 'fetching' ? 'animate-spin' : ''} />
           </button>

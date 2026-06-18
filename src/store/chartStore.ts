@@ -14,6 +14,8 @@ interface ChartState {
 
   // Keyed by `symbol:timeframe`
   candleCache: Record<string, Candle[]>;
+  // Które klucze pochodzą z mocka (fallback) — pozwala ponowić pobranie.
+  candleIsMock: Record<string, boolean>;
   // Keyed by symbol
   quoteCache: Record<string, QuoteData>;
 
@@ -22,7 +24,7 @@ interface ChartState {
   setChartType: (type: ChartType) => void;
   setLoading: (v: boolean) => void;
   setUsingMockData: (v: boolean) => void;
-  setCandleCache: (key: string, candles: Candle[]) => void;
+  setCandleCache: (key: string, candles: Candle[], isMock: boolean) => void;
   setQuoteCache: (symbol: string, quote: QuoteData) => void;
 }
 
@@ -33,6 +35,7 @@ export const useChartStore = create<ChartState>((set) => ({
   isLoading: false,
   usingMockData: false,
   candleCache: {},
+  candleIsMock: {},
   quoteCache: {},
 
   setActiveTicker: (ticker) => set({ activeTicker: ticker }),
@@ -41,8 +44,11 @@ export const useChartStore = create<ChartState>((set) => ({
   setLoading:      (v)      => set({ isLoading: v }),
   setUsingMockData:(v)      => set({ usingMockData: v }),
 
-  setCandleCache: (key, candles) =>
-    set((s) => ({ candleCache: { ...s.candleCache, [key]: candles } })),
+  setCandleCache: (key, candles, isMock) =>
+    set((s) => ({
+      candleCache: { ...s.candleCache, [key]: candles },
+      candleIsMock: { ...s.candleIsMock, [key]: isMock },
+    })),
 
   setQuoteCache: (symbol, quote) =>
     set((s) => ({ quoteCache: { ...s.quoteCache, [symbol]: quote } })),

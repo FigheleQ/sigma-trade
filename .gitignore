@@ -40,3 +40,9 @@ Thumbs.db
 cypress/videos/
 cypress/screenshots/
 cypress.env.json
+
+# Claude Code
+Docs/CLAUDE.md
+
+# Isolated prod build (Lighthouse measurement)
+.next-prod
