@@ -20,6 +20,7 @@ const NewsFeed = dynamic(() => import('@/components/agents/NewsFeed'), {
   ),
 });
 import ProfileButton from '@/components/ui/ProfileButton';
+import PortfolioSummary from '@/components/market/PortfolioSummary';
 import { X } from 'lucide-react';
 import MobileTickerDrawer from '@/components/market/MobileTickerDrawer';
 import { cn } from '@/lib/utils';
@@ -93,7 +94,10 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
             </span>
           </div>
         </div>
-        <ProfileButton email={userEmail} />
+        <div className="flex items-center gap-4">
+          <PortfolioSummary />
+          <ProfileButton email={userEmail} />
+        </div>
       </header>
 
       {/* ── DESKTOP layout (md+) ─────────────────────────────────── */}

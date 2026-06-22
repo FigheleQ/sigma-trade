@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import { useChartStore } from '@/store/chartStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import type { ChartApiResponse } from '@/lib/chart/types';
-import TickerSidebar from './TickerSidebar';
+import LeftPanel from './LeftPanel';
+import OrderPanel from './OrderPanel';
 import ChartHeader from './ChartHeader';
 import ChartTypeToggle from './ChartTypeToggle';
 import TimeframeSelector from './TimeframeSelector';
@@ -94,9 +95,9 @@ export default function MarketView() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Ticker sidebar */}
+      {/* Left panel — tabs: Watchlist / Pozycje / Historia */}
       <div className="hidden md:block shrink-0">
-        <TickerSidebar />
+        <LeftPanel />
       </div>
 
       {/* Chart area */}
@@ -122,6 +123,9 @@ export default function MarketView() {
             isLoading={isLoading && candles.length === 0}
           />
         </div>
+
+        {/* Panel Kup/Sprzedaj */}
+        <OrderPanel />
 
         <TimeframeSelector />
       </div>

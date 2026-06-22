@@ -74,7 +74,9 @@ function useMiniMode(): [boolean, (v: boolean) => void] {
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-export default function TickerSidebar() {
+// `embedded` — gdy watchlista jest osadzona w panelu z zakładkami:
+// pomija mini-mode i własną szerokość/border (kontener je narzuca).
+export default function TickerSidebar({ embedded = false }: { embedded?: boolean } = {}) {
   const {
     sections,
     activeTicker,
@@ -153,7 +155,7 @@ export default function TickerSidebar() {
   };
 
   // ── Mini mode ──────────────────────────────────────────────────────────────
-  if (isMini) {
+  if (isMini && !embedded) {
     return (
       <div className="w-[52px] shrink-0 border-r border-border-subtle flex flex-col h-full overflow-hidden transition-[width] duration-200">
         {/* Mini header — just expand button */}
@@ -202,20 +204,27 @@ export default function TickerSidebar() {
 
   // ── Full mode ──────────────────────────────────────────────────────────────
   return (
-    <div className="w-[185px] shrink-0 border-r border-border-subtle flex flex-col h-full overflow-hidden transition-[width] duration-200">
+    <div className={cn(
+      'flex flex-col h-full overflow-hidden transition-[width] duration-200',
+      embedded
+        ? 'w-full'
+        : 'w-[185px] shrink-0 border-r border-border-subtle',
+    )}>
       {/* Top header */}
       <div className="px-3 py-2 border-b border-border-subtle shrink-0 flex items-center justify-between">
         <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-wider">
-          Watchlist
+          {embedded ? 'Instrumenty' : 'Watchlist'}
         </span>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setIsMini(true)}
-            className="p-0.5 text-zinc-600 hover:text-accent transition-colors"
-            title="Tryb mini"
-          >
-            <ChevronsLeft size={13} />
-          </button>
+          {!embedded && (
+            <button
+              onClick={() => setIsMini(true)}
+              className="p-0.5 text-zinc-600 hover:text-accent transition-colors"
+              title="Tryb mini"
+            >
+              <ChevronsLeft size={13} />
+            </button>
+          )}
           <button
             onClick={() => setSearchOpen(true)}
             className="p-0.5 text-zinc-600 hover:text-accent transition-colors"
