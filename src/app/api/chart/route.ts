@@ -86,6 +86,25 @@ export async function GET(req: Request): Promise<NextResponse> {
     candleCache.set(cacheKey, { candles, usingMockData, expiresAt: now + ttl });
   }
 
-  const response: ChartApiResponse = { candles, quote, usingMockData };
+  // Zakotwiczenie ostatniej świecy do ceny z quote (Finnhub), żeby koniec
+  // wykresu zgadzał się z ceną w nagłówku i panelu Kup/Sprzedaj. Świece idą
+  // z TwelveData (inny vendor → inna ostatnia wartość); nagłówek/egzekucja
+  // używają Finnhuba, więc to quote jest wartością wiążącą. Nie mutujemy
+  // cache — budujemy nową tablicę tylko na odpowiedź.
+  let outCandles = candles;
+  if (quote?.price && candles.length > 0) {
+    const last = candles[candles.length - 1];
+    outCandles = [
+      ...candles.slice(0, -1),
+      {
+        ...last,
+        close: quote.price,
+        high: Math.max(last.high, quote.price),
+        low: Math.min(last.low, quote.price),
+      },
+    ];
+  }
+
+  const response: ChartApiResponse = { candles: outCandles, quote, usingMockData };
   return NextResponse.json(response);
 }
