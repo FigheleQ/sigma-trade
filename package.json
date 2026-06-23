@@ -10,7 +10,10 @@
 		"typecheck": "tsc --noEmit",
 		"cy:open": "env -u ELECTRON_RUN_AS_NODE cypress open",
 		"cy:run": "env -u ELECTRON_RUN_AS_NODE cypress run",
-		"cy:e2e": "env -u ELECTRON_RUN_AS_NODE start-server-and-test dev http://localhost:3000 cy:run"
+		"cy:e2e": "env -u ELECTRON_RUN_AS_NODE start-server-and-test dev http://localhost:3000 cy:run",
+		"cy:open:win": "cypress open",
+		"cy:run:win": "cypress run",
+		"cy:e2e:win": "start-server-and-test dev http://localhost:3000 cy:run:win"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "^6.3.1",
