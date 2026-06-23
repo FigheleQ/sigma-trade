@@ -227,10 +227,11 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
           )}
           <button
             onClick={() => setSearchOpen(true)}
-            className="p-0.5 text-zinc-600 hover:text-accent transition-colors"
+            className="p-2 md:p-0.5 -mr-1 md:mr-0 text-zinc-600 hover:text-accent transition-colors"
             title="Wyszukaj instrument"
           >
-            <Search size={13} />
+            {/* Większa lupa + tap target na mobilce; na desktopie bez zmian */}
+            <Search className="w-5 h-5 md:w-3.5 md:h-3.5" />
           </button>
         </div>
       </div>
