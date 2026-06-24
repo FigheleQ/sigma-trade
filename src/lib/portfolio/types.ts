@@ -52,3 +52,26 @@ export interface OrderResult {
   realizedPnL: number | null;
   portfolio: PortfolioState;
 }
+
+// ============================================================
+// DCA — cykliczny zakup „za X$ co tydzień" (wyzwalany w tle przez cron)
+// ============================================================
+export type DcaStatus = 'active' | 'paused' | 'cancelled';
+
+// Plan DCA (wiersz tabeli dca_plans, znormalizowany do camelCase).
+export interface DcaPlan {
+  id: string;
+  ticker: string;
+  amountUsd: number;        // budżet na jeden cykl (tygodniowy)
+  carryUsd: number;         // reszta przeniesiona z poprzedniego cyklu (whole-shares)
+  status: DcaStatus;
+  nextRunAt: string;        // ISO — kiedy plan jest „due"
+  lastRunAt: string | null; // ISO ostatniej egzekucji (lub null)
+  createdAt: string;
+}
+
+// Body POST /api/dca
+export interface DcaPlanRequest {
+  ticker: string;
+  amountUsd: number;
+}

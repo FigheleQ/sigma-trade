@@ -10,6 +10,7 @@ import MarketRail, { type MarketTab } from './MarketRail';
 import TickerSidebar from './TickerSidebar';
 import PositionsPanel from './PositionsPanel';
 import HistoryPanel from './HistoryPanel';
+import DcaPanel from './DcaPanel';
 
 export default function LeftPanel() {
   const [tab, setTab] = useState<MarketTab | null>('watchlist');
@@ -27,6 +28,7 @@ export default function LeftPanel() {
           {tab === 'watchlist' && <TickerSidebar embedded />}
           {tab === 'positions' && <PositionsPanel />}
           {tab === 'history' && <HistoryPanel />}
+          {tab === 'dca' && <DcaPanel />}
         </div>
       )}
     </div>

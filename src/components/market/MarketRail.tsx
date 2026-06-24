@@ -5,15 +5,16 @@
 // Wizualnie spójny z AgentSidebar po prawej (okrągłe przyciski, ring na
 // aktywnym, hover-glow). Klik aktywnej ikony zwija panel (jak agenci).
 // ============================================================
-import { List, Wallet, History, type LucideIcon } from 'lucide-react';
+import { List, Wallet, History, Repeat, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type MarketTab = 'watchlist' | 'positions' | 'history';
+export type MarketTab = 'watchlist' | 'positions' | 'history' | 'dca';
 
 const ITEMS: { id: MarketTab; label: string; Icon: LucideIcon }[] = [
   { id: 'watchlist', label: 'Lista', Icon: List },
   { id: 'positions', label: 'Pozycje', Icon: Wallet },
   { id: 'history', label: 'Historia', Icon: History },
+  { id: 'dca', label: 'DCA', Icon: Repeat },
 ];
 
 interface MarketRailProps {

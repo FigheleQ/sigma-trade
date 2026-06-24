@@ -9,6 +9,7 @@ Indeks. Każdy plik ma jedną odpowiedzialność.
 | **`roadmap.md`** | Co gotowe, co dalej (Faza 2: agenci, onboarding) |
 | **`features/auth.md`** | Logowanie — Supabase Auth, middleware, sesje, wylogowanie |
 | **`features/portfolio.md`** | Portfel paper-trading — schemat, ceny, zlecenia, UI |
+| **`features/dca.md`** | DCA — cykliczny zakup „za X$ co tydzień" (cron w tle) |
 | **`features/news-agent.md`** | Agent newsów — pipeline Finnhub + analiza AI |
 | **`ci-cd.md`** | Pipeline: Vercel preview, GitHub Actions, deploy po tagu |
 | **`testing.md`** | Testy e2e Cypress — uruchamianie, konwencje, CI |

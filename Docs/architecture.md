@@ -111,6 +111,7 @@ supabase/migrations/           — schemat SQL (portfel + RLS)
 
 - `features/auth.md` — logowanie (Supabase)
 - `features/portfolio.md` — portfel (paper trading)
+- `features/dca.md` — cykliczny zakup (DCA, cron w tle)
 - `features/news-agent.md` — agent newsów
 - `roadmap.md` — co dalej (Faza 2)
 - `ci-cd.md`, `testing.md` — operacje

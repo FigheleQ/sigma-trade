@@ -2,7 +2,7 @@
 
 // ============================================================
 // Mobilny drawer — lustro desktopowego LeftPanel: pionowy pasek ikon
-// (MarketRail: Lista / Pozycje / Historia) + treść aktywnej zakładki po
+// (MarketRail: Lista / Pozycje / Historia / DCA) + treść aktywnej zakładki po
 // prawej. Klik ikony przełącza zakładkę; wybór instrumentu zamyka drawer.
 // Wyszukiwarka jest tylko w zakładce „Lista" (header TickerSidebar).
 // ============================================================
@@ -14,6 +14,7 @@ import MarketRail, { type MarketTab } from './MarketRail';
 import TickerSidebar from './TickerSidebar';
 import PositionsPanel from './PositionsPanel';
 import HistoryPanel from './HistoryPanel';
+import DcaPanel from './DcaPanel';
 
 export default function MobileTickerDrawer() {
   const [isOpen, setIsOpen] = useState(false);
@@ -75,6 +76,7 @@ export default function MobileTickerDrawer() {
           {tab === 'watchlist' && <TickerSidebar embedded />}
           {tab === 'positions' && <PositionsPanel />}
           {tab === 'history' && <HistoryPanel />}
+          {tab === 'dca' && <DcaPanel />}
         </div>
       </div>
     </>
