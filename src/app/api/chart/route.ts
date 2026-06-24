@@ -86,6 +86,23 @@ export async function GET(req: Request): Promise<NextResponse> {
     candleCache.set(cacheKey, { candles, usingMockData, expiresAt: now + ttl });
   }
 
+  // Fallback ceny: gdy quote z Finnhuba nie dojdzie (np. rate-limit → throw),
+  // podeprzyj się ostatnią ceną ze świec. Bez tego panel Kup/Sprzedaj nie ma
+  // ceny (koszt $0.00, przyciski disabled), choć wykres pokazuje realną wartość.
+  // Egzekucja i tak bierze świeżą cenę serwerowo (getExecutionPrice), więc to
+  // tylko cena do wyświetlania/podglądu kosztu — bezpieczne.
+  if ((!quote || !quote.price) && candles.length > 0) {
+    const lastClose = candles[candles.length - 1].close;
+    quote = {
+      price: lastClose,
+      change: quote?.change ?? 0,
+      changePercent: quote?.changePercent ?? 0,
+      high: quote?.high ?? lastClose,
+      low: quote?.low ?? lastClose,
+      open: quote?.open ?? lastClose,
+    };
+  }
+
   // Zakotwiczenie ostatniej świecy do ceny z quote (Finnhub), żeby koniec
   // wykresu zgadzał się z ceną w nagłówku i panelu Kup/Sprzedaj. Świece idą
   // z TwelveData (inny vendor → inna ostatnia wartość); nagłówek/egzekucja
