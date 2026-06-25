@@ -5,7 +5,6 @@ import {
 	BarChart3,
 	MessageCircle,
 	Target,
-	GraduationCap,
 	type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,6 +13,7 @@ import {
 	selectUnreadCount,
 	selectCriticalCount,
 } from '@/lib/store/newsStore';
+import { useCoachStore, selectCoachStatus } from '@/lib/store/coachStore';
 
 export type AgentId =
 	| 'news'
@@ -30,27 +30,29 @@ export interface AgentMeta {
 	badgeVariant: 'default' | 'critical';
 }
 
-const AGENT_ICONS: Record<AgentId, LucideIcon> = {
+const AGENT_ICONS: Record<Exclude<AgentId, 'coach'>, LucideIcon> = {
 	news: Newspaper,
 	technical: BarChart3,
 	sentiment: MessageCircle,
 	orchestrator: Target,
-	coach: GraduationCap,
 };
-	interface AgentSidebarProps {
+interface AgentSidebarProps {
   agents: AgentMeta[];
   activeAgent: AgentId | null;
   onAgentChange: (id: AgentId) => void;
 }
-export default function AgentSidebar({ agents, activeAgent, onAgentChange }: AgentSidebarProps){
+
+export default function AgentSidebar({ agents, activeAgent, onAgentChange }: AgentSidebarProps) {
 	// Live badge counts z newsStore — tylko dla agenta 'news'
 	const newsUnread = useNewsStore(selectUnreadCount);
 	const newsCritical = useNewsStore(selectCriticalCount);
+	const coachStatus = useCoachStore(selectCoachStatus);
+	const coachBusy = coachStatus === 'sending' || coachStatus === 'loading';
 
 	return (
 		<div className='flex md:flex-col flex-row items-center gap-3 py-4 px-2'>
 			{agents.map((agent) => {
-				const Icon = AGENT_ICONS[agent.id];
+				const Icon = agent.id !== 'coach' ? AGENT_ICONS[agent.id as Exclude<AgentId, 'coach'>] : null;
 				const isActive = activeAgent === agent.id;
 				const isDisabled = !agent.enabled;
 
@@ -64,6 +66,8 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 						: agent.badgeVariant;
 				const hasBadge = badgeCount > 0;
 
+				const isCoach = agent.id === 'coach';
+
 				return (
 					<div key={agent.id} className='relative group'>
 						<button
@@ -75,6 +79,7 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 							aria-label={isDisabled ? `${agent.name} — coming in Phase 2` : agent.name}
 							className={cn(
 								'relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center',
+								isCoach && 'overflow-hidden',
 								'bg-bg-panel border border-border-subtle',
 								'transition-all duration-150',
 								isActive && 'ring-2 ring-accent border-accent',
@@ -85,13 +90,27 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 								!isDisabled && 'cursor-pointer',
 							)}
 						>
-							<Icon
-								size={22}
-								className={cn(
-									isActive ? 'text-accent' : 'text-gray-400',
-									!isDisabled && !isActive && 'group-hover:text-accent/70',
-								)}
-							/>
+							{isCoach ? (
+								<img
+									src="/coach-icon.svg"
+									alt="Coach"
+									width={56}
+									height={56}
+									className={cn(
+										'rounded transition-opacity',
+										isDisabled && 'opacity-40',
+										coachBusy && 'coach-icon-glow',
+									)}
+								/>
+							) : Icon ? (
+								<Icon
+									size={22}
+									className={cn(
+										isActive ? 'text-accent' : 'text-gray-400',
+										!isDisabled && !isActive && 'group-hover:text-accent/70',
+									)}
+								/>
+							) : null}
 
 							{/* Badge */}
 							{hasBadge && !isDisabled && (

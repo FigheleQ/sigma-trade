@@ -6,16 +6,26 @@
 //   • EGZEKUCJA    → getExecutionPrice(): zawsze świeży /quote (uczciwa cena)
 // ============================================================
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { nextFinnhubKey } from '@/lib/apiKeys';
 
 const PRICE_TTL_MS = 60_000; // 60 s — po tym czasie cache uznajemy za nieaktualny
 
 // Surowy pojedynczy quote z Finnhub. Zwraca cenę lub null (brak danych / rate limit).
 export async function fetchFinnhubQuote(ticker: string): Promise<number | null> {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) throw new Error('FINNHUB_API_KEY not set');
+  const fetchWith = (apiKey: string): Promise<Response> => {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`;
+    return fetch(url, { cache: 'no-store' });
+  };
 
-  const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  // Pula kluczy: round-robin, a na 429/błąd jeden retry na kolejnym kluczu.
+  const firstKey = nextFinnhubKey();
+  if (!firstKey) throw new Error('FINNHUB_API_KEY not set');
+
+  let res = await fetchWith(firstKey);
+  if (res.status === 429 || !res.ok) {
+    const retryKey = nextFinnhubKey();
+    if (retryKey && retryKey !== firstKey) res = await fetchWith(retryKey);
+  }
   if (!res.ok) return null;
 
   // Finnhub: c = current price

@@ -19,15 +19,53 @@ const NewsFeed = dynamic(() => import('@/components/agents/NewsFeed'), {
     </div>
   ),
 });
+
+// CoachPanel lazy-load — czat + onboarding ładujemy dopiero po otwarciu panelu.
+const CoachPanel = dynamic(() => import('@/components/agents/CoachPanel'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center">
+      <span className="font-mono text-xs text-zinc-700">Loading…</span>
+    </div>
+  ),
+});
 import ProfileButton from '@/components/ui/ProfileButton';
 import PortfolioSummary from '@/components/market/PortfolioSummary';
 import { X } from 'lucide-react';
 import MobileTickerDrawer from '@/components/market/MobileTickerDrawer';
+import CoachIntroPopup from '@/components/agents/CoachIntroPopup';
 import { cn } from '@/lib/utils';
 
 const SIDEBAR_WIDTH = 80; // szerokość kolumny ikon agentów
 const MIN_RIGHT_PCT = 15;
 const MAX_RIGHT_PCT = 70;
+
+// Klucz „widziałem powitanie Coacha" — bump sufiksu = popup pokaże się znów.
+const COACH_INTRO_SEEN_KEY = 'coach_intro_seen_v1';
+
+// Etykiety paneli (mobilny nagłówek overlay).
+const AGENT_LABELS: Record<AgentId, string> = {
+  news: 'News Agent',
+  technical: 'Technical Agent',
+  sentiment: 'Sentiment Agent',
+  orchestrator: 'Orchestrator',
+  coach: 'Coach',
+};
+
+// Treść panelu zależna od aktywnego agenta. News i Coach mają realne UI;
+// reszta (Phase 2) jest wyłączona w sidebarze, więc tu nie trafia.
+function AgentPanelContent({
+  activeAgent,
+  intervalSeconds,
+  autoFetch,
+}: {
+  activeAgent: AgentId;
+  intervalSeconds: number;
+  autoFetch: boolean;
+}) {
+  if (activeAgent === 'coach') return <CoachPanel />;
+  return <NewsFeed intervalSeconds={intervalSeconds} autoFetch={autoFetch} />;
+}
 
 interface Props {
   agents: AgentMeta[];
@@ -40,11 +78,36 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
   const [activeAgent, setActiveAgent] = useState<AgentId | null>(null);
   const [rightPct, setRightPct] = useState(40);
   const [isResizing, setIsResizing] = useState(false);
+  const [showCoachIntro, setShowCoachIntro] = useState(false);
   const desktopRef = useRef<HTMLDivElement>(null);
+
+  const coachEnabled = agents.some((a) => a.id === 'coach' && a.enabled);
 
   // Toggle: kliknięcie aktywnego agenta zamyka panel
   const handleAgentChange = useCallback((id: AgentId) => {
     setActiveAgent((prev) => (prev === id ? null : id));
+  }, []);
+
+  // Jednorazowe powitanie nowej funkcji (desktop) — pokazujemy raz na przeglądarkę,
+  // dopiero gdy Coach jest włączony. Mobile pomijamy (onboarding rusza w panelu).
+  useEffect(() => {
+    if (!coachEnabled) return;
+    // W Cypress blokujemy popup domyślnie — zasłania DCA/portfolio testy.
+    // Test sprawdzający popup sam ustawia flagę 'cypress_show_coach_intro'.
+    if ('Cypress' in window && !localStorage.getItem('cypress_show_coach_intro')) return;
+    if (localStorage.getItem(COACH_INTRO_SEEN_KEY) === '1') return;
+    setShowCoachIntro(true);
+  }, [coachEnabled]);
+
+  const dismissCoachIntro = useCallback(() => {
+    localStorage.setItem(COACH_INTRO_SEEN_KEY, '1');
+    setShowCoachIntro(false);
+  }, []);
+
+  const openCoachFromIntro = useCallback(() => {
+    localStorage.setItem(COACH_INTRO_SEEN_KEY, '1');
+    setShowCoachIntro(false);
+    setActiveAgent('coach');
   }, []);
 
   const startResize = useCallback((e: React.MouseEvent) => {
@@ -133,7 +196,11 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
         >
           {activeAgent && (
             <div className="h-full w-full overflow-hidden">
-              <NewsFeed intervalSeconds={intervalSeconds} autoFetch={autoFetch} />
+              <AgentPanelContent
+                activeAgent={activeAgent}
+                intervalSeconds={intervalSeconds}
+                autoFetch={autoFetch}
+              />
             </div>
           )}
         </div>
@@ -173,7 +240,7 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
         >
           <div className="flex items-center justify-between px-4 h-12 border-b border-border-subtle shrink-0">
             <span className="font-mono text-xs text-zinc-400 uppercase tracking-wider">
-              News Agent
+              {activeAgent ? AGENT_LABELS[activeAgent] : ''}
             </span>
             <button
               onClick={() => setActiveAgent(null)}
@@ -184,10 +251,21 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            <NewsFeed intervalSeconds={intervalSeconds} autoFetch={autoFetch} />
+            {activeAgent && (
+              <AgentPanelContent
+                activeAgent={activeAgent}
+                intervalSeconds={intervalSeconds}
+                autoFetch={autoFetch}
+              />
+            )}
           </div>
         </div>
       </div>
+
+      {/* Jednorazowe powitanie Coacha (tylko desktop) */}
+      {showCoachIntro && (
+        <CoachIntroPopup onClose={dismissCoachIntro} onOpenCoach={openCoachFromIntro} />
+      )}
     </div>
   );
 }

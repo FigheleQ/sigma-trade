@@ -112,7 +112,7 @@ features:
   orchestrator_agent:
     enabled: false
   coach_agent:
-    enabled: false
+    enabled: true # Agent A — Coach/onboarding chatbot (Gemini multi-turn)
   strategy_agent:
     enabled: false
 
