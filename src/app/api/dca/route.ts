@@ -11,6 +11,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getOrCreatePortfolio } from '@/lib/portfolio/service';
 import { getExecutionPrice } from '@/lib/portfolio/prices';
+import { planDcaBuy, nextWeeklyRun } from '@/lib/portfolio/dca';
+import { executeMarketOrder } from '@/lib/portfolio/execute';
 import type { DcaPlan, DcaPlanRequest } from '@/lib/portfolio/types';
 
 interface DcaRow {
@@ -91,8 +93,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     const portfolio = await getOrCreatePortfolio(supabase, user.id);
 
     // Walidacja tickera — musi być realnie notowany (Finnhub zwraca cenę).
+    // Cenę zachowujemy do natychmiastowego pierwszego zakupu.
+    let price: number;
     try {
-      await getExecutionPrice(supabase, ticker);
+      price = await getExecutionPrice(supabase, ticker);
     } catch {
       return NextResponse.json(
         { error: `Nieznany ticker: ${ticker}` },
@@ -100,14 +104,30 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    // next_run_at = teraz → pierwszy zakup pójdzie przy najbliższym skanie crona.
+    const now = new Date();
+    const { quantity, carry } = planDcaBuy(amountUsd, price, portfolio.cash);
+
+    // Wykonaj pierwszy zakup od razu (jeśli stać).
+    if (quantity >= 1) {
+      await executeMarketOrder(supabase, portfolio, {
+        ticker,
+        side: 'buy',
+        quantity,
+        price,
+      });
+    }
+
+    const next = nextWeeklyRun(now, now);
+
     const { data, error } = await supabase
       .from('dca_plans')
       .insert({
         portfolio_id: portfolio.id,
         ticker,
         amount_usd: amountUsd,
-        next_run_at: new Date().toISOString(),
+        carry_usd: carry,
+        last_run_at: quantity >= 1 ? now.toISOString() : null,
+        next_run_at: next.toISOString(),
       })
       .select('id, ticker, amount_usd, carry_usd, status, next_run_at, last_run_at, created_at')
       .single();

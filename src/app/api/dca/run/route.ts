@@ -5,8 +5,7 @@
 //   automatycznie, gdy ustawiony jest env CRON_SECRET).
 // • Działa kluczem service-role (brak sesji usera) — RLS pominięte, dlatego
 //   każdy filtr per-portfel jest tu jawny.
-// • Rynek zamknięty → ODRACZAMY cały przebieg: nic nie kupujemy, plany zostają
-//   due i złapie je kolejny dzienny skan (zakup wpadnie na najbliższą sesję).
+// • Rynek zamknięty → zakup idzie po ostatniej cenie zamknięcia (demo mode).
 // • Handel CAŁYMI akcjami: kup floor(budżet/cena), resztę przenieś (carry_usd).
 //   Po egzekucji next_run_at += 7 dni.
 // ============================================================
@@ -15,7 +14,6 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { executeMarketOrder } from '@/lib/portfolio/execute';
 import { getExecutionPrice } from '@/lib/portfolio/prices';
 import { planDcaBuy, nextWeeklyRun } from '@/lib/portfolio/dca';
-import { isMarketOpen } from '@/lib/market/hours';
 import type { PortfolioRow } from '@/lib/portfolio/service';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +24,6 @@ export async function GET(req: Request): Promise<NextResponse> {
   const auth = req.headers.get('authorization');
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // ── Rynek zamknięty → odroczenie na najbliższą sesję ───────
-  if (!isMarketOpen()) {
-    return NextResponse.json({ ran: 0, deferred: 'market closed' });
   }
 
   const supabase = createServiceClient();
