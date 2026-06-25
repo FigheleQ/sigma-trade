@@ -40,23 +40,23 @@ export async function POST(req: Request): Promise<NextResponse> {
   const quantityIn = body.quantity != null ? Number(body.quantity) : null;
 
   if (!ticker) {
-    return NextResponse.json({ error: 'Brak tickera' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing ticker' }, { status: 400 });
   }
   if (side !== 'buy' && side !== 'sell') {
-    return NextResponse.json({ error: 'side musi być buy lub sell' }, { status: 400 });
+    return NextResponse.json({ error: 'side must be buy or sell' }, { status: 400 });
   }
   // Dokładnie jedno źródło wielkości zlecenia.
   if ((amountUsd == null) === (quantityIn == null)) {
     return NextResponse.json(
-      { error: 'Podaj amountUsd albo quantity' },
+      { error: 'Provide amountUsd or quantity' },
       { status: 400 },
     );
   }
   if (amountUsd != null && (!Number.isFinite(amountUsd) || amountUsd <= 0)) {
-    return NextResponse.json({ error: 'Kwota musi być dodatnia' }, { status: 400 });
+    return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
   }
   if (quantityIn != null && (!Number.isFinite(quantityIn) || quantityIn <= 0)) {
-    return NextResponse.json({ error: 'Ilość musi być dodatnia' }, { status: 400 });
+    return NextResponse.json({ error: 'Quantity must be positive' }, { status: 400 });
   }
 
   try {
@@ -83,7 +83,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (quantity <= 0) {
       return NextResponse.json(
-        { error: side === 'buy' ? 'Kwota za mała na zakup' : 'Brak akcji do sprzedaży' },
+        { error: side === 'buy' ? 'Amount too small to buy' : 'No shares to sell' },
         { status: 400 },
       );
     }

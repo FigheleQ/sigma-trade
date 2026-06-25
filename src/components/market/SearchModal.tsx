@@ -146,14 +146,14 @@ export default function SearchModal({ onClose }: SearchModalProps) {
                   ? 'text-amber-400 hover:text-amber-300'
                   : 'text-zinc-600 hover:text-zinc-400',
               )}
-              title={inFav ? 'Usuń z Ulubionych' : 'Dodaj do Ulubionych'}
+              title={inFav ? 'Remove from Favorites' : 'Add to Favorites'}
             >
               <Star size={13} fill={inFav ? 'currentColor' : 'none'} />
             </button>
             <button
               onClick={(e) => handleMoreClick(e, r)}
               className="p-1.5 rounded text-zinc-600 hover:text-zinc-400 transition-colors"
-              title="Dodaj do listy"
+              title="Add to list"
             >
               <MoreVertical size={13} />
             </button>
@@ -174,7 +174,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
     if (status === 'idle')
       return (
         <p className="px-4 py-10 text-center font-mono text-xs text-zinc-600">
-          wpisz nazwę spółki lub ticker
+          enter a company name or ticker
         </p>
       );
     if (status === 'loading') return <div>{skeletons}</div>;
@@ -182,12 +182,12 @@ export default function SearchModal({ onClose }: SearchModalProps) {
     if (status === 'empty')
       return (
         <p className="px-4 py-10 text-center font-mono text-xs text-zinc-500">
-          Brak wyników dla <span className="text-zinc-300">&quot;{query}&quot;</span>
+          No results for <span className="text-zinc-300">&quot;{query}&quot;</span>
         </p>
       );
     return (
       <p className="px-4 py-10 text-center font-mono text-xs text-red-400">
-        Nie udało się pobrać wyników. Spróbuj ponownie.
+        Could not fetch results. Try again.
       </p>
     );
   };
@@ -212,7 +212,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Szukaj spółki lub tickera…"
+              placeholder="Search company or ticker…"
               className="flex-1 bg-transparent font-mono text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none"
             />
             {query && (
@@ -230,8 +230,8 @@ export default function SearchModal({ onClose }: SearchModalProps) {
 
           {/* Footer */}
           <div className="px-3 py-1.5 border-t border-zinc-800 flex gap-4">
-            <span className="font-mono text-[9px] text-zinc-700">ESC aby zamknąć</span>
-            <span className="font-mono text-[9px] text-zinc-700">Enter aby otworzyć wykres</span>
+            <span className="font-mono text-[9px] text-zinc-700">ESC to close</span>
+            <span className="font-mono text-[9px] text-zinc-700">Enter to open chart</span>
             <span className="font-mono text-[9px] text-zinc-700">600ms debounce</span>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Szukaj spółki lub tickera…"
+            placeholder="Search company or ticker…"
             className="flex-1 bg-transparent font-mono text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none"
           />
           {query ? (
@@ -261,7 +261,7 @@ export default function SearchModal({ onClose }: SearchModalProps) {
             onClick={onClose}
             className="font-mono text-xs text-zinc-400 hover:text-accent px-2 py-1 transition-colors shrink-0"
           >
-            Anuluj
+            Cancel
           </button>
         </div>
 

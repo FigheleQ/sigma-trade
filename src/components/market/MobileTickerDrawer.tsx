@@ -33,7 +33,7 @@ export default function MobileTickerDrawer() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        aria-label="Otwórz menu instrumentów"
+        aria-label="Open instruments menu"
         className="p-1 text-zinc-400 hover:text-accent"
       >
         <Menu size={20} />
@@ -62,7 +62,7 @@ export default function MobileTickerDrawer() {
           <div className="flex items-center justify-center h-12 border-b border-border-subtle shrink-0">
             <button
               onClick={() => setIsOpen(false)}
-              aria-label="Zamknij menu"
+              aria-label="Close menu"
               className="p-1.5 text-zinc-500 hover:text-accent transition-colors"
             >
               <X size={18} />

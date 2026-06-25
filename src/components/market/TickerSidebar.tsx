@@ -163,7 +163,7 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
           <button
             onClick={() => setIsMini(false)}
             className="p-0.5 text-zinc-600 hover:text-accent transition-colors"
-            title="Rozwiń sidebar"
+            title="Expand sidebar"
           >
             <ChevronsRight size={13} />
           </button>
@@ -213,14 +213,14 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
       {/* Top header */}
       <div className="px-3 py-2 border-b border-border-subtle shrink-0 flex items-center justify-between">
         <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-wider">
-          {embedded ? 'Instrumenty' : 'Watchlist'}
+          {embedded ? 'Instruments' : 'Watchlist'}
         </span>
         <div className="flex items-center gap-1">
           {!embedded && (
             <button
               onClick={() => setIsMini(true)}
               className="p-0.5 text-zinc-600 hover:text-accent transition-colors"
-              title="Tryb mini"
+              title="Mini mode"
             >
               <ChevronsLeft size={13} />
             </button>
@@ -228,7 +228,7 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
           <button
             onClick={() => setSearchOpen(true)}
             className="p-2 md:p-0.5 -mr-1 md:mr-0 text-zinc-600 hover:text-accent transition-colors"
-            title="Wyszukaj instrument"
+            title="Search instrument"
           >
             {/* Większa lupa + tap target na mobilce; na desktopie bez zmian */}
             <Search className="w-5 h-5 md:w-3.5 md:h-3.5" />
@@ -309,7 +309,7 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                               section.id === 'favorites' ? 'text-white' : 'text-zinc-400',
                             )}
                           >
-                            {section.id === 'favorites' ? 'Ulubione' : section.name}
+                            {section.id === 'favorites' ? 'Favorites' : section.name}
                           </span>
                           {section.id === 'favorites' && (
                             <Star size={10} className="shrink-0 text-yellow-400 fill-yellow-400" />
@@ -325,7 +325,7 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                             <button
                               onClick={(e) => startEdit(e, section)}
                               className="p-1 text-zinc-600 hover:text-zinc-300 transition-colors"
-                              title="Zmień nazwę"
+                              title="Rename"
                             >
                               <Pencil size={10} />
                             </button>
@@ -333,7 +333,7 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                               <button
                                 onClick={(e) => { e.stopPropagation(); deleteSection(section.id); }}
                                 className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
-                                title="Usuń sekcję"
+                                title="Delete section"
                               >
                                 <Trash2 size={10} />
                               </button>

@@ -62,7 +62,7 @@ describe('Portfel — paper trading', () => {
     visitDashboard();
     cy.wait('@portfolio');
 
-    cy.contains('Portfel').should('be.visible');
+    cy.contains('Portfolio').should('be.visible');
     cy.contains('$98,420.00').should('be.visible');
     cy.contains('+1.20%').should('be.visible');
     cy.contains('$12,000.00').should('be.visible');
@@ -93,7 +93,7 @@ describe('Portfel — paper trading', () => {
     visitDashboard();
     // <MarketView /> renderuje się dwa razy (layout desktop + mobile),
     // więc pasek ikon jest w DOM podwójnie — klikamy tylko widoczny.
-    cy.get('[aria-label="Pozycje"]').filter(':visible').click();
+    cy.get('[aria-label="Positions"]').filter(':visible').click();
 
     cy.contains('10 × $150.00').should('be.visible'); // ilość × avg entry
     cy.contains('$165.00').should('be.visible'); // cena aktualna
@@ -131,11 +131,11 @@ describe('Portfel — paper trading', () => {
     stubChart();
 
     visitDashboard();
-    cy.get('[aria-label="Historia"]').filter(':visible').click();
+    cy.get('[aria-label="History"]').filter(':visible').click();
     cy.wait('@trades');
 
-    cy.contains('Kup').should('be.visible');
-    cy.contains('Sprzedaj').should('be.visible');
+    cy.contains('Buy').should('be.visible');
+    cy.contains('Sell').should('be.visible');
     cy.contains('5 × $165.00').should('be.visible'); // wpis sprzedaży
     cy.contains('+$75.00').should('be.visible'); // realized P/L
   });
@@ -161,10 +161,10 @@ describe('Portfel — paper trading', () => {
     visitDashboard();
     cy.wait('@chart'); // cena dotarła do OrderPanel
 
-    cy.contains('button', 'Kup').should('not.be.disabled').click();
+    cy.contains('button', 'Buy').should('not.be.disabled').click();
     cy.wait('@order');
 
-    cy.contains('Kupiono 1× AAPL @ $100.00').should('be.visible');
+    cy.contains('Bought 1× AAPL @ $100.00').should('be.visible');
   });
 
   // 5) Walidacja (Sekcja 7) — bez środków nie kupisz, bez akcji nie sprzedasz.
@@ -180,7 +180,7 @@ describe('Portfel — paper trading', () => {
     cy.wait('@chart');
     cy.wait('@portfolio');
 
-    cy.contains('button', 'Kup').should('be.disabled');
-    cy.contains('button', 'Sprzedaj').should('be.disabled');
+    cy.contains('button', 'Buy').should('be.disabled');
+    cy.contains('button', 'Sell').should('be.disabled');
   });
 });

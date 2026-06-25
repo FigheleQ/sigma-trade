@@ -134,7 +134,7 @@ export default function ListPanel({ item, anchor, onClose }: ListPanelProps) {
               <button
                 onClick={() => !inSection && addToSection(section.id, item)}
                 disabled={inSection}
-                title={inSection ? 'Już na liście' : `Dodaj do ${section.name}`}
+                title={inSection ? 'Already in list' : `Add to ${section.name}`}
                 className={cn(
                   'ml-1 w-5 h-5 flex items-center justify-center rounded transition-colors shrink-0',
                   inSection
@@ -164,7 +164,7 @@ export default function ListPanel({ item, anchor, onClose }: ListPanelProps) {
                 value={newListName}
                 onChange={(e) => setNewListName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setShowInput(false)}
-                placeholder="Nazwa listy…"
+                placeholder="List name…"
                 className="flex-1 bg-zinc-800 border border-zinc-600 rounded px-2 py-1 font-mono text-[11px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-accent transition-colors min-w-0"
               />
               <button
@@ -183,7 +183,7 @@ export default function ListPanel({ item, anchor, onClose }: ListPanelProps) {
             className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 font-mono text-[11px] transition-colors"
           >
             <Plus size={12} />
-            utwórz nową listę
+            create new list
           </button>
         )}
       </div>
@@ -245,7 +245,7 @@ export default function ListPanel({ item, anchor, onClose }: ListPanelProps) {
           </div>
           <div className="flex items-center justify-between px-3 pb-2.5 border-b border-zinc-700/60">
             <span className="font-mono text-[11px] text-zinc-300 font-medium truncate pr-2">
-              {item.symbol} — dodaj do listy
+              {item.symbol} — add to list
             </span>
             <button onClick={handleClose} className="text-zinc-500 hover:text-accent transition-colors shrink-0">
               <X size={14} />

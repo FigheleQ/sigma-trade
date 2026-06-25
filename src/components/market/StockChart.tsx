@@ -210,7 +210,7 @@ export default function StockChart({
 
 		const formatTime = (t: number): string => {
 			const d = new Date(t * 1000);
-			const months = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
+			const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 			return `${d.getDate()} ${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
 		};
 
@@ -305,7 +305,7 @@ export default function StockChart({
 						<span className='font-mono text-[10px] text-zinc-600'>{visibleBars}b</span>
 						<button onClick={handleZoomIn} className='w-7 h-7 rounded border border-border-subtle text-zinc-400 hover:text-accent hover:border-accent font-mono text-sm'>+</button>
 					</div>
-					<span className='font-mono text-[10px] text-zinc-700'>przytrzymaj = cena</span>
+					<span className='font-mono text-[10px] text-zinc-700'>hold = price</span>
 				</div>
 
 				{/* Scrollbar — widoczny tylko gdy przybliżono */}

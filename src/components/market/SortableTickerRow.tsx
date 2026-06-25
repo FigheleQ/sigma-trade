@@ -143,7 +143,7 @@ export default function SortableTickerRow({
         {!isFavoritesSection && (
           <button
             onClick={onToggleFavorite}
-            title={inFavorites ? 'Usuń z Ulubionych' : 'Dodaj do Ulubionych'}
+            title={inFavorites ? 'Remove from Favorites' : 'Add to Favorites'}
             className={cn(
               'p-1 rounded',
               inFavorites
@@ -168,7 +168,7 @@ export default function SortableTickerRow({
               'transition-opacity duration-150 group-hover:delay-100',
             ],
           )}
-          title="Dodaj do listy"
+          title="Add to list"
         >
           <MoreVertical size={mobileMode ? 14 : 11} />
         </button>
@@ -184,7 +184,7 @@ export default function SortableTickerRow({
               'transition-opacity duration-150 group-hover:delay-100',
             ],
           )}
-          title="Usuń z listy"
+          title="Remove from list"
         >
           <Minus size={mobileMode ? 14 : 11} />
         </button>

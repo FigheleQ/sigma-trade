@@ -76,7 +76,7 @@ describe('DCA — cykliczny zakup', () => {
     openDcaTab();
     cy.wait('@dca');
 
-    dcaPanel().contains('Brak planów DCA').should('be.visible');
+    dcaPanel().contains('No DCA plans').should('be.visible');
   });
 
   // 2) Lista planów — ticker i kwota tygodniowa.
@@ -92,7 +92,7 @@ describe('DCA — cykliczny zakup', () => {
 
     dcaPanel().within(() => {
       cy.contains('AAPL').should('be.visible');
-      cy.contains('$100.00/tydz.').should('be.visible');
+      cy.contains('$100.00/wk').should('be.visible');
     });
   });
 
@@ -120,8 +120,8 @@ describe('DCA — cykliczny zakup', () => {
     });
 
     dcaPanel().within(() => {
-      cy.contains('Dodano plan: MSFT za $250.00/tydz.').should('be.visible');
-      cy.contains('$250.00/tydz.').should('be.visible'); // plan dopisany do listy
+      cy.contains('Plan added: MSFT for $250.00/wk').should('be.visible');
+      cy.contains('$250.00/wk').should('be.visible'); // plan dopisany do listy
     });
   });
 
@@ -130,7 +130,7 @@ describe('DCA — cykliczny zakup', () => {
     cy.intercept('GET', '**/api/dca', { statusCode: 200, body: { plans: [] } }).as('dcaList');
     cy.intercept('POST', '**/api/dca', {
       statusCode: 400,
-      body: { error: 'Nieznany ticker: ZZZZ' },
+      body: { error: 'Unknown ticker: ZZZZ' },
     }).as('dcaCreate');
     stubBase();
 
@@ -144,7 +144,7 @@ describe('DCA — cykliczny zakup', () => {
     });
     cy.wait('@dcaCreate');
 
-    dcaPanel().contains('Nieznany ticker: ZZZZ').should('be.visible');
+    dcaPanel().contains('Unknown ticker: ZZZZ').should('be.visible');
   });
 
   // 5) Usuwanie planu — znika z listy (usunięcie optymistyczne).
@@ -161,11 +161,11 @@ describe('DCA — cykliczny zakup', () => {
 
     dcaPanel().within(() => {
       cy.contains('AAPL').should('be.visible');
-      cy.get('[aria-label="Usuń plan"]').click();
+      cy.get('[aria-label="Delete plan"]').click();
     });
     cy.wait('@dcaDelete');
 
     // Plan zniknął z widocznego panelu (usunięcie optymistyczne).
-    dcaPanel().should('not.contain', '$100.00/tydz.');
+    dcaPanel().should('not.contain', '$100.00/wk');
   });
 });

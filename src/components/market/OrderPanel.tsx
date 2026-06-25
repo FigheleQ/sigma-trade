@@ -94,11 +94,11 @@ export default function OrderPanel() {
       setMsg({
         type: 'ok',
         text:
-          `${side === 'buy' ? 'Kupiono' : 'Sprzedano'} ${fmtShares(r.quantity)}× ${r.ticker} @ ${fmtUSD(r.executionPrice)}` +
+          `${side === 'buy' ? 'Bought' : 'Sold'} ${fmtShares(r.quantity)}× ${r.ticker} @ ${fmtUSD(r.executionPrice)}` +
           (r.realizedPnL != null ? `  ·  P/L ${fmtSignedUSD(r.realizedPnL)}` : ''),
       });
     } else {
-      setMsg({ type: 'err', text: res.error ?? 'Błąd zlecenia' });
+      setMsg({ type: 'err', text: res.error ?? 'Order error' });
     }
   };
 
@@ -109,7 +109,7 @@ export default function OrderPanel() {
     <div className="border-t border-border-subtle shrink-0 px-4 py-2">
       {!marketOpen && (
         <div className="mb-2 font-mono text-[9px] text-amber-500/80 uppercase tracking-wider">
-          ⚠ Rynek zamknięty — cena może nie odzwierciedlać wartości rzeczywistej
+          ⚠ Market closed — price may not reflect real value
         </div>
       )}
 
@@ -131,8 +131,8 @@ export default function OrderPanel() {
             step="any"
             value={amount}
             onChange={(e) => onAmount(e.target.value)}
-            placeholder="Kwota"
-            aria-label="Kwota w USD"
+            placeholder="Amount"
+            aria-label="Amount in USD"
             className={inputCls}
           />
         </label>
@@ -145,18 +145,18 @@ export default function OrderPanel() {
             step="any"
             value={shares}
             onChange={(e) => onShares(e.target.value)}
-            placeholder="Ilość"
-            aria-label="Ilość akcji"
+            placeholder="Qty"
+            aria-label="Shares"
             className={inputCls}
           />
-          <span className="font-mono text-[9px] text-zinc-600">akcji</span>
+          <span className="font-mono text-[9px] text-zinc-600">shares</span>
           {owned > 0 && (
             <button
               onClick={fillMax}
               className="font-mono text-[9px] text-zinc-500 hover:text-accent transition-colors"
               type="button"
             >
-              maks
+              max
             </button>
           )}
         </label>
@@ -173,7 +173,7 @@ export default function OrderPanel() {
                 : 'bg-zinc-900 text-zinc-700 cursor-not-allowed',
             )}
           >
-            Kup
+            Buy
           </button>
           <button
             onClick={() => void submit('sell')}
@@ -185,7 +185,7 @@ export default function OrderPanel() {
                 : 'bg-zinc-900 text-zinc-700 cursor-not-allowed',
             )}
           >
-            Sprzedaj
+            Sell
           </button>
         </div>
       </div>
@@ -193,7 +193,7 @@ export default function OrderPanel() {
       {/* Posiadane + cash + komunikat */}
       <div className="flex items-center justify-between mt-1.5">
         <span className="font-mono text-[9px] text-zinc-600">
-          Posiadasz: {fmtShares(owned)} · Cash: {fmtUSD(cash)}
+          Holdings: {fmtShares(owned)} · Cash: {fmtUSD(cash)}
         </span>
         {msg && (
           <span

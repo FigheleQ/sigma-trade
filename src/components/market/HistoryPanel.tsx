@@ -12,11 +12,11 @@ import { fmtShares } from '@/lib/portfolio/shares';
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'teraz';
-  if (m < 60) return `${m}m temu`;
+  if (m < 1) return 'now';
+  if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h temu`;
-  return `${Math.floor(h / 24)}d temu`;
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 export default function HistoryPanel() {
@@ -31,14 +31,14 @@ export default function HistoryPanel() {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-wider">
-          Historia
+          History
         </span>
       </div>
       <div className="flex flex-col flex-1 overflow-y-auto">
       {trades.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-4">
           <p className="font-mono text-[11px] text-zinc-600 text-center">
-            Brak transakcji.
+            No transactions.
           </p>
         </div>
       ) : (
@@ -55,7 +55,7 @@ export default function HistoryPanel() {
                       isBuy ? 'bg-accent/15 text-accent' : 'bg-red-500/15 text-red-400',
                     )}
                   >
-                    {isBuy ? 'Kup' : 'Sprzedaj'}
+                    {isBuy ? 'Buy' : 'Sell'}
                   </span>
                   <span className="font-mono text-xs font-bold text-gray-100">{t.ticker}</span>
                 </div>

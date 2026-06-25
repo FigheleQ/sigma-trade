@@ -27,14 +27,14 @@ export default function PositionsPanel() {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-wider">
-          Pozycje
+          Positions
         </span>
       </div>
       <div className="flex flex-col flex-1 overflow-y-auto">
       {positions.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-4">
           <p className="font-mono text-[11px] text-zinc-600 text-center">
-            {loading ? 'Ładowanie…' : 'Brak otwartych pozycji.\nKup instrument, by zacząć.'}
+            {loading ? 'Loading…' : 'No open positions.\nBuy an instrument to start.'}
           </p>
         </div>
       ) : (

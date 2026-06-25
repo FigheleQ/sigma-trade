@@ -45,7 +45,7 @@ export async function executeMarketOrder(
   if (side === 'buy') {
     const cost = price * quantity;
     if (cost > portfolio.cash) {
-      throw new OrderError('Za mało środków na zakup');
+      throw new OrderError('Insufficient funds');
     }
     cashDelta = -cost;
 
@@ -72,7 +72,7 @@ export async function executeMarketOrder(
   } else {
     // SELL
     if (!posRow || Number(posRow.quantity) < quantity) {
-      throw new OrderError('Za mało akcji do sprzedaży');
+      throw new OrderError('Not enough shares to sell');
     }
     cashDelta = price * quantity;
 

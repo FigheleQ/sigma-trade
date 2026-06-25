@@ -60,7 +60,7 @@ export const COLOR_PALETTE = [
 const DEFAULT_SECTIONS: WatchlistSection[] = [
   {
     id: 'main',
-    name: 'Główna',
+    name: 'Main',
     isPinned: true,
     isCollapsed: false,
     color: '#1D9E75',
@@ -74,7 +74,7 @@ const DEFAULT_SECTIONS: WatchlistSection[] = [
   },
   {
     id: 'favorites',
-    name: 'Ulubione',
+    name: 'Favorites',
     isPinned: true,
     isCollapsed: false,
     color: '#BA7517',
@@ -82,7 +82,7 @@ const DEFAULT_SECTIONS: WatchlistSection[] = [
   },
   {
     id: 'tracked',
-    name: 'Śledzone',
+    name: 'Tracked',
     isPinned: false,
     isCollapsed: false,
     color: '#185FA5',

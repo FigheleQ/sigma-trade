@@ -24,7 +24,7 @@ export default function PortfolioSummary() {
   return (
     <div className="hidden md:flex items-center gap-3 font-mono text-xs">
       <span className="text-zinc-500">
-        Portfel{' '}
+        Portfolio{' '}
         <span className="text-gray-100 tabular-nums">{fmtUSD(portfolio.totalValue)}</span>
       </span>
       <span className={cn('tabular-nums', positive ? 'text-accent' : 'text-red-400')}>

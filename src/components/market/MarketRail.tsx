@@ -11,9 +11,9 @@ import { cn } from '@/lib/utils';
 export type MarketTab = 'watchlist' | 'positions' | 'history' | 'dca';
 
 const ITEMS: { id: MarketTab; label: string; Icon: LucideIcon }[] = [
-  { id: 'watchlist', label: 'Lista', Icon: List },
-  { id: 'positions', label: 'Pozycje', Icon: Wallet },
-  { id: 'history', label: 'Historia', Icon: History },
+  { id: 'watchlist', label: 'Watchlist', Icon: List },
+  { id: 'positions', label: 'Positions', Icon: Wallet },
+  { id: 'history', label: 'History', Icon: History },
   { id: 'dca', label: 'DCA', Icon: Repeat },
 ];
 

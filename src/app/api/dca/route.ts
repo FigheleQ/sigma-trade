@@ -81,10 +81,10 @@ export async function POST(req: Request): Promise<NextResponse> {
   const amountUsd = Number(body.amountUsd);
 
   if (!ticker) {
-    return NextResponse.json({ error: 'Brak tickera' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing ticker' }, { status: 400 });
   }
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
-    return NextResponse.json({ error: 'Kwota musi być dodatnia' }, { status: 400 });
+    return NextResponse.json({ error: 'Amount must be positive' }, { status: 400 });
   }
 
   try {
@@ -97,7 +97,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       price = await getExecutionPrice(supabase, ticker);
     } catch {
       return NextResponse.json(
-        { error: `Nieznany ticker: ${ticker}` },
+        { error: `Unknown ticker: ${ticker}` },
         { status: 400 },
       );
     }
@@ -148,7 +148,7 @@ export async function DELETE(req: Request): Promise<NextResponse> {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const id = new URL(req.url).searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Brak id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   try {
     const portfolio = await getOrCreatePortfolio(supabase, user.id);

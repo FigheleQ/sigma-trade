@@ -13,7 +13,7 @@ import { fmtUSD } from '@/lib/portfolio/format';
 import { cn } from '@/lib/utils';
 
 const fmtDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString('pl-PL', { day: '2-digit', month: 'short' });
+  new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 
 export default function DcaPanel() {
   const activeTicker = useChartStore((s) => s.activeTicker);
@@ -42,20 +42,20 @@ export default function DcaPanel() {
     setMsg(null);
     const amountUsd = Number(amount);
     const t = ticker.toUpperCase().trim();
-    if (!t) return setMsg({ type: 'err', text: 'Podaj ticker' });
+    if (!t) return setMsg({ type: 'err', text: 'Enter a ticker' });
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
-      return setMsg({ type: 'err', text: 'Kwota musi być dodatnia' });
+      return setMsg({ type: 'err', text: 'Amount must be positive' });
     }
     const res = await createPlan({ ticker: t, amountUsd });
-    if (res.ok) setMsg({ type: 'ok', text: `Dodano plan: ${t} za ${fmtUSD(amountUsd)}/tydz.` });
-    else setMsg({ type: 'err', text: res.error ?? 'Błąd' });
+    if (res.ok) setMsg({ type: 'ok', text: `Plan added: ${t} for ${fmtUSD(amountUsd)}/wk` });
+    else setMsg({ type: 'err', text: res.error ?? 'Error' });
   };
 
   return (
     <div className="flex flex-col h-full overflow-hidden" data-cy="dca-panel">
       <div className="px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="font-mono text-[10px] text-zinc-600 uppercase tracking-wider">
-          DCA — zakup co tydzień
+          DCA — weekly buy
         </span>
       </div>
 
@@ -77,7 +77,7 @@ export default function DcaPanel() {
             placeholder="100"
             className="flex-1 w-0 bg-transparent border border-border-subtle rounded px-2 py-1 font-mono text-[11px] text-gray-100 tabular-nums outline-none focus:border-accent/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
-          <span className="font-mono text-[9px] text-zinc-600">/tydz.</span>
+          <span className="font-mono text-[9px] text-zinc-600">/wk</span>
         </div>
         <button
           onClick={() => void submit()}
@@ -89,7 +89,7 @@ export default function DcaPanel() {
               : 'bg-accent/15 text-accent hover:bg-accent/25',
           )}
         >
-          {saving ? 'Dodaję…' : 'Dodaj plan'}
+          {saving ? 'Adding…' : 'Add plan'}
         </button>
         {msg && (
           <span className={cn('font-mono text-[9px]', msg.type === 'ok' ? 'text-accent' : 'text-red-400')}>
@@ -103,7 +103,7 @@ export default function DcaPanel() {
         {plans.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-4">
             <p className="font-mono text-[11px] text-zinc-600 text-center">
-              {loading ? 'Ładowanie…' : 'Brak planów DCA.\nDodaj cykliczny zakup powyżej.'}
+              {loading ? 'Loading…' : 'No DCA plans.\nAdd a recurring buy above.'}
             </p>
           </div>
         ) : (
@@ -116,18 +116,18 @@ export default function DcaPanel() {
                 <div className="flex items-baseline gap-1.5">
                   <span className="font-mono text-xs font-bold text-gray-100">{p.ticker}</span>
                   <span className="font-mono text-[10px] text-accent tabular-nums">
-                    {fmtUSD(p.amountUsd)}/tydz.
+                    {fmtUSD(p.amountUsd)}/wk
                   </span>
                 </div>
                 <div className="font-mono text-[9px] text-zinc-500 mt-0.5">
-                  Następny: {fmtDate(p.nextRunAt)}
+                  Next: {fmtDate(p.nextRunAt)}
                 </div>
               </div>
               <button
                 onClick={() => void deletePlan(p.id)}
                 className="shrink-0 p-1 text-zinc-600 hover:text-red-400 transition-colors"
-                aria-label="Usuń plan"
-                title="Usuń plan"
+                aria-label="Delete plan"
+                title="Delete plan"
               >
                 <Trash2 size={13} />
               </button>
