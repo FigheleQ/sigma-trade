@@ -39,6 +39,19 @@ body {
 }
 
 /* ----------------------------------------------------------------
+   Coach icon — pulsing green glow when the bot is thinking
+   ---------------------------------------------------------------- */
+
+@keyframes coach-glow {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(0,255,127,0.4)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(0,255,127,1)) drop-shadow(0 0 22px rgba(0,255,127,0.5)); }
+}
+
+.coach-icon-glow {
+  animation: coach-glow 1.1s ease-in-out infinite;
+}
+
+/* ----------------------------------------------------------------
    AI Analysis Block — animated conic-gradient border
    ---------------------------------------------------------------- */
 

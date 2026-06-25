@@ -4,6 +4,7 @@
 // zwraca AnalyzedArticle[]. Fallback gdy AI niedostępne.
 // ============================================================
 import { loadConfig } from '@/lib/config';
+import { nextGeminiKey } from '@/lib/apiKeys';
 import type { RawArticle, AnalyzedArticle, ArticleCategory, Urgency } from './types';
 
 // ----------------------------------------------------------------
@@ -102,19 +103,27 @@ async function callGemini(
   maxTokens: number,
   temperature: number,
 ): Promise<AIAnalysisItem[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  const callWith = (apiKey: string): Promise<Response> => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature, maxOutputTokens: maxTokens },
+      }),
+    });
+  };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // Pula kluczy: round-robin, a na 429 jeden retry na kolejnym kluczu.
+  const firstKey = nextGeminiKey();
+  if (!firstKey) throw new Error('GEMINI_API_KEY not set');
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature, maxOutputTokens: maxTokens },
-    }),
-  });
+  let res = await callWith(firstKey);
+  if (res.status === 429) {
+    const retryKey = nextGeminiKey();
+    if (retryKey && retryKey !== firstKey) res = await callWith(retryKey);
+  }
 
   if (res.status === 429) throw new RateLimitError('Gemini');
   if (!res.ok) {

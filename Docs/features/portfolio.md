@@ -10,13 +10,13 @@
 
 - **Waluta:** USD — balans i ceny w jednej walucie, zero przeliczników FX.
 - **Instrumenty:** wyłącznie akcje notowane w USA, **long only** (kup → trzymaj → sprzedaj).
-  Bez CFD, shortów i dźwigni. *Keep it simple.*
+  Bez CFD, shortów i dźwigni. _Keep it simple._
 - **Jednostka:** całe akcje. Częściowa sprzedaż dozwolona (np. 5 z 10 akcji),
   ale minimum **1 akcja** — bez ułamków (0.5 akcji niedozwolone).
 - **Balans startowy:** do wyboru przy starcie — 10 000 / 50 000 / 100 000 USD.
 
 > ⚠️ **Uwaga:** instrumenty muszą być realnie notowane. Spółki prywatne
->  nie mają tickera — Finnhub nie zwróci dla nich ceny.
+> nie mają tickera — Finnhub nie zwróci dla nich ceny.
 > Dozwolone tylko symbole giełdowe US: AAPL, MSFT, NVDA, TSLA, GOOGL itp.
 
 ---
@@ -41,6 +41,7 @@ SPRZEDAJ:
 ```
 
 ### Średnia cena zakupu (avg entry)
+
 Jeśli użytkownik kupi ten sam ticker kilka razy po różnych cenach,
 pozycja przechowuje **jedną średnią ważoną** cenę wejścia, nie listę cen.
 
@@ -49,17 +50,20 @@ pozycja przechowuje **jedną średnią ważoną** cenę wejścia, nie listę cen
 ## 3. Integracja z Finnhub (free tier — 60 req/min)
 
 ### Cena do WYŚWIETLANIA vs cena do EGZEKUCJI
+
 - **Wyświetlanie** (watchlist, pozycje) → z **cache w bazie**
   (klucz = ticker, TTL ~30–60 s). Może być lekko nieaktualne — bez znaczenia.
 - **Egzekucja** zlecenia (klik Kup/Sprzedaj) → **świeży pojedynczy `/quote`**
   w momencie transakcji (1 call), żeby transakcja poszła po realnej cenie.
 
 ### Wspólny cache po stronie serwera
+
 Cena danego tickera jest **taka sama dla wszystkich użytkowników** →
 cache'owana **raz w bazie** (nie per użytkownik). 10 userów patrzących
 na AAPL = 1 call, nie 10. Skaluje się w ramach darmowego limitu.
 
 ### Kiedy odświeżać ceny
+
 - przy **logowaniu** → batch cen całej watchlisty (5–20 calls, z zapasem)
 - przy **transakcji** → 1 świeży call (cena egzekucji)
 - opcjonalnie **łagodny interwał** (np. co 60 s) tylko dla aktualnie
@@ -84,7 +88,9 @@ Poza sesją Finnhub zwraca ostatnią cenę zamknięcia (cena stoi w miejscu).
 ## 5. Widoki
 
 ### Zakładka „Pozycje"
+
 Dla każdej otwartej pozycji:
+
 - ticker
 - ilość posiadanych akcji
 - avg entry (cena zakupu / średnia ważona)
@@ -92,7 +98,9 @@ Dla każdej otwartej pozycji:
 - **P/L %** względem ceny zakupu (unrealized)
 
 ### Zakładka „Historia transakcji"
+
 Niezmienny ledger. Każdy wpis (kup / sprzedaj):
+
 - typ (buy / sell), ticker, ilość
 - cena wykonania (**zapisana na sztywno** — nie przeliczana później)
 - data i czas
@@ -100,6 +108,7 @@ Niezmienny ledger. Każdy wpis (kup / sprzedaj):
   wyszedł na plus czy minus
 
 ### TopBar — podgląd portfela
+
 - **Total P/L portfela** = (cash + wartość rynkowa pozycji) vs balans startowy
 - cash dostępny
 
@@ -108,6 +117,7 @@ Niezmienny ledger. Każdy wpis (kup / sprzedaj):
 ## 6. Architektura UI (wizja)
 
 ### Zasada nadrzędna
+
 Aplikacja tradingowa = użytkownik chce widzieć **naraz** wykres, watchlistę
 i stan portfela. Dlatego:
 
@@ -138,21 +148,23 @@ i stan portfela. Dlatego:
 - **Panel agenta** (ikony po prawej) — bez zmian, dochodzi Risk Agent.
 
 ### Mobile
+
 Te same zakładki sidebara składają się do **hamburgera/drawera**
 (tu wzorzec hamburgera jest jak najbardziej OK). Wykres na pełny ekran,
 portfel skrócony w TopBarze.
 
 ### Sekcje (zakładki) i ich zawartość
 
-| Sekcja | Co pokazuje | Gdzie |
-|---|---|---|
-| **Watchlist** | ceny obserwowanych instrumentów (istnieje) | sidebar tab |
-| **Pozycje** | otwarte akcje: ilość, avg entry, cena aktualna, P/L % | sidebar tab |
-| **Historia** | log buy/sell + realized P/L | sidebar tab |
-| **Portfel/Balans** | cash, total value, P/L % | TopBar + pełny widok |
-| **Kup/Sprzedaj** | wybór instrumentu, ilość, podgląd kosztu | panel pod wykresem |
+| Sekcja             | Co pokazuje                                           | Gdzie                |
+| ------------------ | ----------------------------------------------------- | -------------------- |
+| **Watchlist**      | ceny obserwowanych instrumentów (istnieje)            | sidebar tab          |
+| **Pozycje**        | otwarte akcje: ilość, avg entry, cena aktualna, P/L % | sidebar tab          |
+| **Historia**       | log buy/sell + realized P/L                           | sidebar tab          |
+| **Portfel/Balans** | cash, total value, P/L %                              | TopBar + pełny widok |
+| **Kup/Sprzedaj**   | wybór instrumentu, ilość, podgląd kosztu              | panel pod wykresem   |
 
 ### Rekomendacja wdrożenia
+
 Jeden komponent zakładek obsługuje oba tryby: jako **sidebar** (desktop)
 i jako **drawer** (mobile) — bez chowania kluczowych danych przed traderem.
 To naturalna ewolucja obecnej watchlisty, nie przepisywanie od zera.
@@ -184,7 +196,38 @@ wartości rynkowej.
 
 ## 8. Poza Fazą 1 (backlog)
 
-- Reset portfela (przywrócenie balansu startowego, czyszczenie pozycji)
-- Pełna blokada handlu przy zamkniętej giełdzie
-- Stop-loss / take-profit
-- Wykres wartości portfela w czasie
+### W realizacji (Faza 2)
+
+- **OCO / bracket** — SL i TP jako para (jeden się wykona → drugi się kasuje)
+- **Podgląd kosztu przed zakupem** — „kupujesz 10× AAPL ≈ 1 650$ → zostanie 8 350$"
+- **Reset portfela** — przywrócenie balansu startowego, czyszczenie pozycji
+- **Wykres wartości portfela w czasie** — equity curve (snapshoty wartości)
+- Poprawki czytelności panelu Kup/Sprzedaj (większe liczby, wyraźniejsze przyciski)
+
+### Pomysły (do rozważenia)
+
+**Typy zleceń**
+
+- Limit buy/sell — kup/sprzedaj dopiero po cenie ≤/≥ progu (nie po rynkowej)
+- Stop-limit — po przebiciu stopu składa limit zamiast market order
+- Trailing stop — stop „podąża" za ceną w górę o X%, chroni narastający zysk
+
+**Zarządzanie ryzykiem**
+
+- Podpowiedź wielkości pozycji — „ryzykuję max 2% kapitału" → sugerowany SL i ilość
+- Ostrzeżenie o koncentracji — % portfela w jednym tickerze/sektorze
+- Max drawdown — największy spadek wartości portfela od szczytu
+
+**Statystyki / dane**
+
+- Podsumowanie skuteczności — win rate, średni zysk/strata, najlepszy i najgorszy trade
+- Eksport historii transakcji do CSV
+
+**UX / operacyjne**
+
+- Powiadomienie (toast/badge), gdy zlecenie warunkowe się wykona
+- Time-in-force — DAY (wygasa na koniec sesji) / GTC (do odwołania)
+- Dziennik transakcji — notatka „dlaczego kupiłem" przy trade'ie
+- Potwierdzenie zlecenia — modal z podsumowaniem przed wykonaniem
+- Pełna blokada handlu przy zamkniętej giełdzie (dziś tylko komunikat)
+- Symulacja dywidend (paper)

@@ -12,6 +12,13 @@ export default async function DashboardPage() {
 
   const agents: AgentMeta[] = [
     {
+      id: 'coach' as AgentId,
+      name: 'Coach Agent',
+      enabled: features.coach_agent.enabled,
+      badgeCount: 0,
+      badgeVariant: 'default',
+    },
+    {
       id: 'news' as AgentId,
       name: 'News Agent',
       enabled: features.news_agent.enabled,
@@ -36,13 +43,6 @@ export default async function DashboardPage() {
       id: 'orchestrator' as AgentId,
       name: 'Orchestrator',
       enabled: features.orchestrator_agent.enabled,
-      badgeCount: 0,
-      badgeVariant: 'default',
-    },
-    {
-      id: 'coach' as AgentId,
-      name: 'Coach Agent',
-      enabled: features.coach_agent.enabled,
       badgeCount: 0,
       badgeVariant: 'default',
     },

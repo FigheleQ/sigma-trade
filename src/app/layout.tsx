@@ -11,6 +11,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Sigma Trade',
   description: 'Paper trading with AI agent team',
+  icons: {
+    icon: '/coach-icon.svg',
+  },
 };
 
 export default function RootLayout({
