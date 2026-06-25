@@ -21,7 +21,7 @@ export default function Snackbar({ message }: SnackbarProps) {
     if (!message) return;
     setCurrent(message);
     setVisible(true);
-    const t = setTimeout(() => setVisible(false), 3000);
+    const t = setTimeout(() => setVisible(false), 5000);
     return () => clearTimeout(t);
   }, [message]);
 
@@ -29,6 +29,8 @@ export default function Snackbar({ message }: SnackbarProps) {
 
   return (
     <div
+      data-cy="snackbar"
+      data-visible={visible}
       className={cn(
         'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none',
         'transition-all duration-300',
