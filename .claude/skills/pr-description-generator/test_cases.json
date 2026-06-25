@@ -1,0 +1,59 @@
+[
+  {
+    "id": "test_1_auth_feature",
+    "prompt": "Here's a diff for a new authentication feature:\n\nNew files:\n- app/auth/login.tsx (login form with email/password, form validation)\n- app/auth/useAuth.ts (session management hook)\n- app/auth/ProtectedRoute.tsx (route wrapper for auth check)\n- tests/auth.spec.ts (9 E2E tests covering: unauthenticated redirect, login form behavior, successful login, sign-out, session persistence)\n\nChanges:\n- Login page with two-panel layout (form on left, marketing content on right)\n- Submit button disabled until both email and password are filled\n- Inline error messages without layout shift\n- Session persists across page reloads and browser tabs\n- Sign-out invalidates session server-side\n- Protected routes redirect unauthenticated users to /login\n- Authenticated users are redirected away from /login\n- Profile button in dashboard shows signed-in user's name\n\nPlease generate a PR description for this.",
+    "context": "feature",
+    "expected_elements": [
+      "bold summary about authentication",
+      "mention of route protection",
+      "deliverables listed",
+      "screenshot placeholder for UI changes",
+      "testing section with E2E test count"
+    ]
+  },
+  {
+    "id": "test_2_bugfix_perf",
+    "prompt": "Here's a diff for a performance bug fix:\n\nModified files:\n- app/components/DataTable.tsx (changed from re-rendering entire table on cell change to only updating affected row)\n- app/hooks/useTableData.ts (memoized cell update logic)\n\nTest changes:\n- Added 3 performance benchmarks in tests/performance.spec.ts\n- Existing unit tests still pass\n\nThe fix addresses the issue where tables with 1000+ rows were re-rendering completely on any cell update, causing 2-3 second delays. Now only the affected row re-renders, reducing delay to <100ms.\n\nPlease generate a PR description.",
+    "context": "performance bugfix",
+    "expected_elements": [
+      "bold summary about performance improvement",
+      "quantified improvement (delay reduction)",
+      "deliverables focused on what the user experiences (speed)",
+      "no screenshot needed",
+      "testing section mentioning benchmarks"
+    ]
+  },
+  {
+    "id": "test_3_ui_redesign",
+    "prompt": "Here's a diff for a UI redesign:\n\nModified files:\n- app/components/Button.tsx (new color variants: primary, secondary, danger, ghost)\n- app/components/Button.module.css (updated styles with new design tokens)\n- app/pages/Dashboard.tsx (buttons updated to use new variants)\n- app/pages/Settings.tsx (button styles updated)\n\nTest coverage:\n- Existing component tests still pass\n- No new tests added yet\n\nChanges:\n- Buttons now support 4 color variants with consistent sizing\n- Hover, active, and disabled states redesigned\n- New design follows updated brand guidelines\n\nPlease generate a PR description.",
+    "context": "UI redesign",
+    "expected_elements": [
+      "bold summary about button redesign",
+      "deliverables listing color variants and states",
+      "screenshot placeholder for visual changes",
+      "note about tests being prepared later"
+    ]
+  },
+  {
+    "id": "test_4_backend_api",
+    "prompt": "Here's a diff for a backend API enhancement:\n\nModified files:\n- server/routes/users.ts (added new GET /users/:id/profile endpoint)\n- server/controllers/userController.ts (new getProfile method)\n- server/models/User.ts (added profile caching)\n- tests/api.spec.ts (4 new endpoint tests covering: valid user ID, non-existent user, unauthorized access, response schema)\n\nThe new endpoint returns user profile data (name, avatar, bio, joined date) with fast caching to reduce database queries.\n\nPlease generate a PR description.",
+    "context": "backend feature",
+    "expected_elements": [
+      "bold summary about new API endpoint",
+      "deliverables focused on what the endpoint enables (faster profile fetching, data caching)",
+      "no screenshot needed",
+      "testing section with endpoint test coverage"
+    ]
+  },
+  {
+    "id": "test_5_refactor_no_change",
+    "prompt": "Here's a diff for a refactoring PR:\n\nModified files:\n- app/utils/validators.ts (extracted validation logic from components into separate utility file)\n- app/components/Form.tsx (now uses imported validation utilities instead of inline logic)\n- app/components/LoginForm.tsx (now uses imported validation utilities)\n\nTest coverage:\n- Existing tests still pass\n- No new tests added (existing unit tests cover validation logic)\n\nChanges are internal refactoring only - no user-facing changes.\n\nPlease generate a PR description.",
+    "context": "refactor",
+    "expected_elements": [
+      "honest summary that this is internal refactoring",
+      "explanation of code organization improvement",
+      "note that existing tests pass",
+      "no media placeholders"
+    ]
+  }
+]
