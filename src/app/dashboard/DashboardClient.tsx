@@ -92,7 +92,9 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
   // dopiero gdy Coach jest włączony. Mobile pomijamy (onboarding rusza w panelu).
   useEffect(() => {
     if (!coachEnabled) return;
-    if ('Cypress' in window) return; // popup blokuje DCA/portfolio testy w CI
+    // W Cypress blokujemy popup domyślnie — zasłania DCA/portfolio testy.
+    // Test sprawdzający popup sam ustawia flagę 'cypress_show_coach_intro'.
+    if ('Cypress' in window && !localStorage.getItem('cypress_show_coach_intro')) return;
     if (localStorage.getItem(COACH_INTRO_SEEN_KEY) === '1') return;
     setShowCoachIntro(true);
   }, [coachEnabled]);

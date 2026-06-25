@@ -199,8 +199,13 @@ describe('Coach — onboarding chatbot', () => {
       },
     }).as('coachKickoff');
 
-    // Bez seeda flagi → popup powinien wyskoczyć.
-    cy.visit('/dashboard');
+    // Ustawiamy flagę opt-in — bez niej Cypress globalnie blokuje popup
+    // (żeby nie przeszkadzał w testach DCA/portfolio z main).
+    cy.visit('/dashboard', {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('cypress_show_coach_intro', '1');
+      },
+    });
 
     cy.contains('Meet Coach', { timeout: 30000 }).should('be.visible');
     cy.contains('button', 'Meet your coach').click();
