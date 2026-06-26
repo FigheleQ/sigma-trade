@@ -17,7 +17,12 @@ export default function PortfolioSummary() {
     void fetchPortfolio();
   }, [fetchPortfolio]);
 
-  if (!portfolio) return null;
+  // Rezerwujemy szerokość slotu, zanim dane portfela dotrą. Bez tego blok
+  // „wskakuje" w topbar po fetchu i przesuwa ProfileButton — to był główny
+  // źródło CLS na desktopie (mobile go nie renderuje, stąd tam CLS ~0).
+  if (!portfolio) {
+    return <div className="hidden md:block w-[280px]" aria-hidden="true" />;
+  }
 
   const positive = portfolio.totalPnL >= 0;
 

@@ -15,7 +15,7 @@ const NewsFeed = dynamic(() => import('@/components/agents/NewsFeed'), {
   ssr: false,
   loading: () => (
     <div className="flex-1 flex items-center justify-center">
-      <span className="font-mono text-xs text-zinc-700">Loading…</span>
+      <span className="font-mono text-xs text-zinc-500">Loading…</span>
     </div>
   ),
 });
@@ -25,7 +25,7 @@ const CoachPanel = dynamic(() => import('@/components/agents/CoachPanel'), {
   ssr: false,
   loading: () => (
     <div className="flex-1 flex items-center justify-center">
-      <span className="font-mono text-xs text-zinc-700">Loading…</span>
+      <span className="font-mono text-xs text-zinc-500">Loading…</span>
     </div>
   ),
 });
@@ -41,7 +41,7 @@ const MIN_RIGHT_PCT = 15;
 const MAX_RIGHT_PCT = 70;
 
 // Klucz „widziałem powitanie Coacha" — bump sufiksu = popup pokaże się znów.
-const COACH_INTRO_SEEN_KEY = 'coach_intro_seen_v1';
+const coachIntroKey = (email: string) => `coach_intro_seen_v1_${email}`;
 
 // Etykiety paneli (mobilny nagłówek overlay).
 const AGENT_LABELS: Record<AgentId, string> = {
@@ -90,25 +90,27 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
 
   // Jednorazowe powitanie nowej funkcji (desktop) — pokazujemy raz na przeglądarkę,
   // dopiero gdy Coach jest włączony. Mobile pomijamy (onboarding rusza w panelu).
+  const introKey = coachIntroKey(userEmail);
+
   useEffect(() => {
     if (!coachEnabled) return;
     // W Cypress blokujemy popup domyślnie — zasłania DCA/portfolio testy.
     // Test sprawdzający popup sam ustawia flagę 'cypress_show_coach_intro'.
     if ('Cypress' in window && !localStorage.getItem('cypress_show_coach_intro')) return;
-    if (localStorage.getItem(COACH_INTRO_SEEN_KEY) === '1') return;
+    if (localStorage.getItem(introKey) === '1') return;
     setShowCoachIntro(true);
-  }, [coachEnabled]);
+  }, [coachEnabled, introKey]);
 
   const dismissCoachIntro = useCallback(() => {
-    localStorage.setItem(COACH_INTRO_SEEN_KEY, '1');
+    localStorage.setItem(introKey, '1');
     setShowCoachIntro(false);
-  }, []);
+  }, [introKey]);
 
   const openCoachFromIntro = useCallback(() => {
-    localStorage.setItem(COACH_INTRO_SEEN_KEY, '1');
+    localStorage.setItem(introKey, '1');
     setShowCoachIntro(false);
     setActiveAgent('coach');
-  }, []);
+  }, [introKey]);
 
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -149,10 +151,10 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
           <span className="font-mono text-sm font-semibold text-gray-100 tracking-wide">
             Sigma Trade
           </span>
-          <span className="font-mono text-xs text-gray-500">v0.2.0</span>
+          <span className="font-mono text-xs text-gray-400">v0.2.0</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <span className="hidden md:block font-mono text-xs text-gray-500 uppercase tracking-wider">
+            <span className="hidden md:block font-mono text-xs text-gray-400 uppercase tracking-wider">
               Paper Trading
             </span>
           </div>
@@ -163,6 +165,10 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
         </div>
       </header>
 
+      {/* Główny obszar aplikacji — landmark <main> dla czytników ekranu
+          i nawigacji klawiaturą (skip-to-content). Obejmuje oba warianty
+          layoutu; w danym breakpoincie widoczny jest tylko jeden. */}
+      <main className="flex flex-1 flex-col overflow-hidden min-h-0">
       {/* ── DESKTOP layout (md+) ─────────────────────────────────── */}
       <div
         ref={desktopRef}
@@ -261,6 +267,7 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
           </div>
         </div>
       </div>
+      </main>
 
       {/* Jednorazowe powitanie Coacha (tylko desktop) */}
       {showCoachIntro && (

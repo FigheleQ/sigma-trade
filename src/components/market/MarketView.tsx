@@ -16,7 +16,7 @@ const StockChart = dynamic(() => import('./StockChart'), {
   ssr: false,
   loading: () => (
     <div className="flex-1 flex items-center justify-center">
-      <div className="font-mono text-xs text-zinc-700">Loading chart…</div>
+      <div className="font-mono text-xs text-zinc-500">Loading chart…</div>
     </div>
   ),
 });
@@ -118,7 +118,7 @@ export default function MarketView() {
           <ChartHeader ticker={activeMeta} quote={quote} isLoading={isLoading} />
           <div className="flex items-center gap-2 shrink-0">
             {usingMockData && (
-              <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-600 uppercase tracking-wider">
+              <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 uppercase tracking-wider">
                 Demo data
               </span>
             )}

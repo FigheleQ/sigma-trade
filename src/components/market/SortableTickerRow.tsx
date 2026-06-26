@@ -96,6 +96,7 @@ export default function SortableTickerRow({
         {...attributes}
         {...listeners}
         tabIndex={-1}
+        aria-label={`Reorder ${item.symbol}`}
         className={cn(
           'pl-1.5 pr-0 py-3 text-zinc-700 hover:text-zinc-500 cursor-grab active:cursor-grabbing transition-opacity shrink-0 touch-none',
           mobileMode ? 'opacity-60' : 'opacity-0 group-hover:opacity-100',
@@ -127,7 +128,7 @@ export default function SortableTickerRow({
             </span>
           )}
         </div>
-        <span className="block font-mono text-[10px] text-zinc-600 truncate mt-0.5">
+        <span className="block font-mono text-[10px] text-zinc-500 truncate mt-0.5">
           {item.name}
         </span>
       </button>

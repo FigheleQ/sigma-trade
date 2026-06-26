@@ -216,7 +216,7 @@ export default function ListPanel({ item, anchor, onClose }: ListPanelProps) {
           <span className="font-mono text-[11px] text-zinc-300 font-medium truncate pr-2">
             {item.symbol} — dodaj do listy
           </span>
-          <button onClick={handleClose} className="text-zinc-500 hover:text-accent transition-colors shrink-0">
+          <button onClick={handleClose} aria-label="Close" className="text-zinc-500 hover:text-accent transition-colors shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -247,7 +247,7 @@ export default function ListPanel({ item, anchor, onClose }: ListPanelProps) {
             <span className="font-mono text-[11px] text-zinc-300 font-medium truncate pr-2">
               {item.symbol} — add to list
             </span>
-            <button onClick={handleClose} className="text-zinc-500 hover:text-accent transition-colors shrink-0">
+            <button onClick={handleClose} aria-label="Close" className="text-zinc-500 hover:text-accent transition-colors shrink-0">
               <X size={14} />
             </button>
           </div>

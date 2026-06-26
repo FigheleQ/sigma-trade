@@ -92,7 +92,7 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 						>
 							{isCoach ? (
 								<img
-									src="/coach-icon.svg"
+									src="/coach-icon-white.svg"
 									alt="Coach"
 									width={56}
 									height={56}

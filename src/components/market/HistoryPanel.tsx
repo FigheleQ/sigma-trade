@@ -21,6 +21,7 @@ function timeAgo(iso: string): string {
 
 export default function HistoryPanel() {
   const trades = usePortfolioStore((s) => s.trades);
+  const tradesLoading = usePortfolioStore((s) => s.tradesLoading);
   const fetchTrades = usePortfolioStore((s) => s.fetchTrades);
 
   useEffect(() => {
@@ -35,7 +36,13 @@ export default function HistoryPanel() {
         </span>
       </div>
       <div className="flex flex-col flex-1 overflow-y-auto">
-      {trades.length === 0 ? (
+      {tradesLoading && trades.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center px-4">
+          <p className="font-mono text-[11px] text-zinc-500 text-center">
+            Loading history…
+          </p>
+        </div>
+      ) : trades.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-4">
           <p className="font-mono text-[11px] text-zinc-600 text-center">
             No transactions.

@@ -9,6 +9,7 @@ import {
   selectCoachStatus,
   selectCoachRecommendations,
 } from '@/lib/store/coachStore';
+import type { CoachStatus } from '@/lib/store/coachStore';
 import type { CoachMessage } from '@/lib/coach/types';
 
 // ----------------------------------------------------------------
@@ -100,23 +101,42 @@ function MessageBubble({
 }
 
 // ----------------------------------------------------------------
-// Typewriter hook — animuje ostatnią wiadomość bota
+// Typewriter hook — animuje TYLKO nowe wiadomości bota
 // ----------------------------------------------------------------
 
-const CHARS_PER_TICK = 3;  // znaki na klatkę
-const TICK_MS = 16;        // ~60fps → ~180 znaków/sek
+const CHARS_PER_TICK = 3;
+const TICK_MS = 16;
 
-function useTypewriter(messages: CoachMessage[]) {
+function useTypewriter(messages: CoachMessage[], status: CoachStatus) {
+  // IDs wiadomości obecnych przy montowaniu — nigdy ich nie animujemy.
+  // Inicjalizacja synchroniczna (poza useEffect) → działa już w 1. renderze.
+  const mountedIds = useRef<Set<string>>(new Set());
+  const initialized = useRef(false);
+  if (!initialized.current) {
+    initialized.current = true;
+    messages.forEach((m) => mountedIds.current.add(m.id));
+  }
+
+  // Synchronicznie podczas renderowania — gdy init() zakończy (loading → idle),
+  // seedujemy mountedIds historią z serwera ZANIM getContent() zostanie wywołane.
+  // Podejście synchroniczne (nie useEffect) jest kluczowe: efekty odpałają się
+  // po renderze, a getContent jest wywoływane w trakcie renderowania bąbli.
+  const prevStatusRef = useRef<CoachStatus>(status);
+  if (prevStatusRef.current === 'loading' && status === 'idle') {
+    messages.forEach((m) => mountedIds.current.add(m.id));
+  }
+  prevStatusRef.current = status;
+
   const [typingId, setTypingId] = useState<string | null>(null);
-  const [displayed, setDisplayed] = useState<string>('');
+  const [displayed, setDisplayed] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.role !== 'model') return;
-    if (last.id === typingId) return;
+    if (mountedIds.current.has(last.id)) return; // stara wiadomość — pomiń
+    if (last.id === typingId) return;             // już animujemy
 
-    // Nowa wiadomość bota — animuj
     if (timerRef.current) clearInterval(timerRef.current);
     setTypingId(last.id);
     setDisplayed('');
@@ -138,7 +158,19 @@ function useTypewriter(messages: CoachMessage[]) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  return { typingId, displayed };
+  // Zwraca treść do wyrenderowania dla danej wiadomości.
+  // Dla "nowej, jeszcze nie przejętej przez effect" — pusty string zamiast
+  // pełnej treści, żeby nie było flash przed startem animacji.
+  function getContent(m: CoachMessage): string {
+    if (m.id === typingId) return displayed;
+    if (m.role === 'model' && !mountedIds.current.has(m.id) && typingId === null) return '';
+    return m.content;
+  }
+
+  const isTyping = typingId !== null &&
+    displayed.length < (messages.find((m) => m.id === typingId)?.content.length ?? 0);
+
+  return { typingId, getContent, isTyping };
 }
 
 // ----------------------------------------------------------------
@@ -156,8 +188,7 @@ export default function CoachPanel() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { typingId, displayed } = useTypewriter(messages);
-  const isTyping = typingId !== null && displayed.length < (messages.find(m => m.id === typingId)?.content.length ?? 0);
+  const { typingId, getContent, isTyping } = useTypewriter(messages, status);
 
   useEffect(() => {
     void init();
@@ -165,7 +196,7 @@ export default function CoachPanel() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages, status, displayed]);
+  }, [messages, status, isTyping]);
 
   const isBusy = status === 'sending' || status === 'loading';
 
@@ -223,17 +254,14 @@ export default function CoachPanel() {
           </div>
         )}
 
-        {messages.map((m) => {
-          const isAnimated = m.id === typingId;
-          return (
-            <MessageBubble
-              key={m.id}
-              role={m.role}
-              content={isAnimated ? displayed : m.content}
-              showCursor={isAnimated && isTyping}
-            />
-          );
-        })}
+        {messages.map((m) => (
+          <MessageBubble
+            key={m.id}
+            role={m.role}
+            content={getContent(m)}
+            showCursor={m.id === typingId && isTyping}
+          />
+        ))}
 
         {status === 'sending' && (
           <div className="flex items-end gap-2 justify-start">

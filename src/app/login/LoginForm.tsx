@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
 
   const canSubmit = email.trim().length > 0 && password.length > 0;
 
@@ -60,7 +62,7 @@ export default function LoginForm() {
             Enter your credentials to access the dashboard.
           </p>
 
-          <form onSubmit={handleSubmit} className='flex flex-col gap-5'>
+          <form onSubmit={handleSubmit} className='flex flex-col gap-5' data-hydrated={hydrated || undefined}>
             <div className='flex flex-col gap-1.5'>
               <label className='font-mono text-xs text-gray-500 uppercase tracking-wider'>
                 Email

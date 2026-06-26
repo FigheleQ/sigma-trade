@@ -32,7 +32,7 @@ export default function ChartHeader({ ticker, quote, isLoading }: ChartHeaderPro
           )}
         </div>
         {name && (
-          <p className="font-mono text-[10px] text-zinc-600 truncate">{name}</p>
+          <p className="font-mono text-[10px] text-zinc-500 truncate">{name}</p>
         )}
       </div>
 

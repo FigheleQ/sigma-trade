@@ -37,11 +37,12 @@ function openCoach() {
 
 // Wchodzi na dashboard z już „widzianym" powitaniem Coacha — popup nie
 // przykrywa UI w testach samego czatu.
-const COACH_INTRO_SEEN_KEY = 'coach_intro_seen_v1';
+// Klucz per-user — musi pasować do coachIntroKey() w DashboardClient.tsx
+const coachIntroKey = (e: string) => `coach_intro_seen_v1_${e}`;
 function visitDashboardIntroSeen() {
   cy.visit('/dashboard', {
     onBeforeLoad(win) {
-      win.localStorage.setItem(COACH_INTRO_SEEN_KEY, '1');
+      win.localStorage.setItem(coachIntroKey(email), '1');
     },
   });
 }

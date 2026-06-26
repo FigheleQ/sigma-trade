@@ -345,10 +345,10 @@ export default function StockChart({
 				<div className='flex items-center justify-between px-3 py-1'>
 					<div className='flex items-center gap-2'>
 						<button onClick={handleZoomOut} className='w-7 h-7 rounded border border-border-subtle text-zinc-400 hover:text-accent hover:border-accent font-mono text-sm'>–</button>
-						<span className='font-mono text-[10px] text-zinc-600'>{visibleBars}b</span>
+						<span className='font-mono text-[10px] text-zinc-500'>{visibleBars}b</span>
 						<button onClick={handleZoomIn} className='w-7 h-7 rounded border border-border-subtle text-zinc-400 hover:text-accent hover:border-accent font-mono text-sm'>+</button>
 					</div>
-					<span className='font-mono text-[10px] text-zinc-700'>hold = price</span>
+					<span className='font-mono text-[10px] text-zinc-500'>hold = price</span>
 				</div>
 
 				{/* Scrollbar — widoczny tylko gdy przybliżono */}

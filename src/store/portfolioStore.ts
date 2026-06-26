@@ -17,6 +17,7 @@ interface PortfolioStore {
   lots: PositionLot[];
   selectedLotId: string | null;
   loading: boolean;
+  tradesLoading: boolean;
   ordering: boolean;
   error: string | null;
 
@@ -35,6 +36,9 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   lots: [],
   selectedLotId: null,
   loading: false,
+  // start jako true — zanim pierwszy fetchTrades się rozstrzygnie, History
+  // pokazuje „Loading history…" zamiast migać „No transactions.".
+  tradesLoading: true,
   ordering: false,
   error: null,
 
@@ -53,6 +57,7 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   },
 
   fetchTrades: async () => {
+    set({ tradesLoading: true });
     try {
       const res = await fetch('/api/trades');
       if (!res.ok) return;
@@ -60,6 +65,10 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
       set({ trades: data.trades });
     } catch {
       // cicho — historia nie jest krytyczna dla działania
+    } finally {
+      // niezależnie od wyniku (sukces / błąd / !ok) kończymy stan ładowania;
+      // przy pustych/nieudanych danych History pokaże „No transactions.".
+      set({ tradesLoading: false });
     }
   },
 
