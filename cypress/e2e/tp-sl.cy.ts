@@ -101,8 +101,8 @@ describe('TP/SL — loty pozycji', () => {
     cy.wait('@chart');
 
     // Otwórz modal zakupu
-    cy.contains('button', 'Kup').filter(':visible').click();
-    cy.contains('Kup AAPL').should('be.visible');
+    cy.contains('button', 'Buy').filter(':visible').click();
+    cy.contains('Buy AAPL').should('be.visible');
 
     // Włącz toggle Take Profit i zmień wartość
     cy.contains('Take Profit')
@@ -125,7 +125,7 @@ describe('TP/SL — loty pozycji', () => {
       .type('95');
 
     // Potwierdź zakup
-    cy.contains('button', 'Kup 1 × AAPL').click();
+    cy.contains('button', 'Buy 1 × AAPL').click();
     cy.wait('@order').then((interception) => {
       const body = interception.request.body as Record<string, unknown>;
       expect(body.takeProfit).to.equal(105);
@@ -134,7 +134,7 @@ describe('TP/SL — loty pozycji', () => {
     });
 
     cy.get('[data-cy="snackbar"][data-visible="true"]')
-      .should('contain.text', 'Kupiono 1× AAPL @ $100.00');
+      .should('contain.text', 'Bought 1× AAPL @ $100.00');
   });
 
   // ── 2. Zamknięcie wszystkich lotów (Sprzedaj) ─────────────
@@ -178,8 +178,8 @@ describe('TP/SL — loty pozycji', () => {
     visitDashboard();
     cy.wait('@chart');
 
-    // Żaden lot nie jest zaznaczony — przycisk „Sprzedaj" sprzedaje wszystko
-    cy.contains('button', 'Sprzedaj').filter(':visible').click();
+    // Żaden lot nie jest zaznaczony — przycisk „Sell" sprzedaje wszystko
+    cy.contains('button', 'Sell').filter(':visible').click();
 
     cy.wait('@order').then((interception) => {
       const body = interception.request.body as Record<string, unknown>;
@@ -188,6 +188,6 @@ describe('TP/SL — loty pozycji', () => {
     });
 
     cy.get('[data-cy="snackbar"][data-visible="true"]')
-      .should('contain.text', 'Sprzedano 2× AAPL');
+      .should('contain.text', 'Sold 2× AAPL');
   });
 });
