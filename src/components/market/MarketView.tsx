@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useChartStore } from '@/store/chartStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import type { ChartApiResponse } from '@/lib/chart/types';
+import { usePortfolioStore } from '@/store/portfolioStore';
 import LeftPanel from './LeftPanel';
 import OrderPanel from './OrderPanel';
 import ChartHeader from './ChartHeader';
@@ -38,6 +39,9 @@ export default function MarketView() {
   } = useChartStore();
 
   const { sections, activeTicker: wlActiveTicker } = useWatchlistStore();
+
+  const lots = usePortfolioStore((s) => s.lots);
+  const selectedLotId = usePortfolioStore((s) => s.selectedLotId);
 
   // Init: sync watchlist's persisted activeTicker into chartStore on first mount
   useEffect(() => {
@@ -93,6 +97,13 @@ export default function MarketView() {
     ? sections.flatMap((s) => s.items).find((i) => i.symbol === activeTicker)
     : undefined;
 
+  // Linie TP/SL z wybranego lotu (tylko gdy lot należy do aktywnego tickera)
+  const selectedLot = selectedLotId
+    ? lots.find((l) => l.id === selectedLotId && l.ticker === activeTicker)
+    : null;
+  const tpPrice = selectedLot?.takeProfit ?? null;
+  const slPrice = selectedLot?.stopLoss ?? null;
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* Left panel — tabs: Watchlist / Pozycje / Historia */}
@@ -121,6 +132,8 @@ export default function MarketView() {
             data={candles}
             chartType={chartType}
             isLoading={isLoading && candles.length === 0}
+            tpPrice={tpPrice}
+            slPrice={slPrice}
           />
         </div>
 

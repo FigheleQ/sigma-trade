@@ -35,14 +35,32 @@ export interface PortfolioState {
   positions: Position[];
 }
 
+// Pojedyncze otwarcie pozycji (lot) z opcjonalnym TP/SL.
+export interface PositionLot {
+  id: string;
+  ticker: string;
+  quantity: number;
+  entryPrice: number;
+  takeProfit: number | null;
+  stopLoss: number | null;
+  status: 'open' | 'closed';
+  openedAt: string;           // ISO
+  closedAt: string | null;
+  closePrice: number | null;
+  closeReason: 'manual' | 'take_profit' | 'stop_loss' | null;
+}
+
 // Body POST /api/orders — podaj DOKŁADNIE jedno z:
 //   • amountUsd — kup/sprzedaj „za X$" (ilość ułamkowa liczona po cenie egzekucji)
-//   • quantity  — dokładna ilość akcji (ułamkowa); m.in. pełne wyjście z pozycji
+//   • quantity  — dokładna ilość akcji; m.in. pełne wyjście z pozycji
 export interface OrderRequest {
   ticker: string;
   side: 'buy' | 'sell';
   amountUsd?: number;
   quantity?: number;
+  takeProfit?: number;   // tylko przy buy — cena absolutna TP
+  stopLoss?: number;     // tylko przy buy — cena absolutna SL
+  lotId?: string;        // tylko przy sell — zamknij konkretny lot; brak = zamknij wszystko
 }
 
 // Odpowiedź POST /api/orders

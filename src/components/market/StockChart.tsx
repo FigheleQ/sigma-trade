@@ -6,12 +6,14 @@ import {
 	ColorType,
 	AreaSeries,
 	CandlestickSeries,
+	LineStyle,
 } from 'lightweight-charts';
 import type {
 	IChartApi,
 	ISeriesApi,
 	SeriesType,
 	UTCTimestamp,
+	IPriceLine,
 } from 'lightweight-charts';
 import type { Candle, ChartType } from '@/lib/chart/types';
 
@@ -96,6 +98,8 @@ interface StockChartProps {
 	data: Candle[];
 	chartType: ChartType;
 	isLoading: boolean;
+	tpPrice?: number | null;
+	slPrice?: number | null;
 }
 
 // ----------------------------------------------------------------
@@ -106,11 +110,16 @@ export default function StockChart({
 	data,
 	chartType,
 	isLoading,
+	tpPrice,
+	slPrice,
 }: StockChartProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const chartRef = useRef<IChartApi | null>(null);
 	const seriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
 	const tooltipRef = useRef<HTMLDivElement>(null);
+	// Referencje do linii TP/SL (po 3 linie na poziom dla efektu poświaty)
+	const tpLinesRef = useRef<IPriceLine[]>([]);
+	const slLinesRef = useRef<IPriceLine[]>([]);
 	const [visibleBars, setVisibleBars] = useState(30);
 	const [scrollOffset, setScrollOffset] = useState(0);
 
@@ -181,6 +190,9 @@ export default function StockChart({
 	// Switch series type when chartType changes (no chart rebuild)
 	useEffect(() => {
 		if (!chartRef.current || !seriesRef.current) return;
+		// Linie TP/SL są przypisane do serii — usuną się razem z nią
+		tpLinesRef.current = [];
+		slLinesRef.current = [];
 		chartRef.current.removeSeries(seriesRef.current);
 		const newSeries = createSeries(chartRef.current);
 		seriesRef.current = newSeries;
@@ -202,6 +214,37 @@ export default function StockChart({
 		// reset scroll do prawej (najnowsze dane) przy zmianie danych
 		setScrollOffset(data.length - 1);
 	}, [data, chartType]);
+
+	// Linie TP/SL — usuwa poprzednie i rysuje nowe przy każdej zmianie
+	useEffect(() => {
+		const series = seriesRef.current;
+		if (!series) return;
+
+		// Usuń poprzednie linie TP
+		tpLinesRef.current.forEach((l) => { try { series.removePriceLine(l); } catch { /* ignoruj */ } });
+		tpLinesRef.current = [];
+
+		// Usuń poprzednie linie SL
+		slLinesRef.current.forEach((l) => { try { series.removePriceLine(l); } catch { /* ignoruj */ } });
+		slLinesRef.current = [];
+
+		if (tpPrice && tpPrice > 0) {
+			// Poświata: 3 linie — środkowa pełna + 2 szersze z malejącą przezroczystością
+			tpLinesRef.current = [
+				series.createPriceLine({ price: tpPrice, color: 'rgba(34,197,94,0.15)', lineWidth: 4, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: '' }),
+				series.createPriceLine({ price: tpPrice, color: 'rgba(34,197,94,0.35)', lineWidth: 3, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: '' }),
+				series.createPriceLine({ price: tpPrice, color: 'rgba(34,197,94,0.9)',  lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true,  title: 'TP' }),
+			];
+		}
+
+		if (slPrice && slPrice > 0) {
+			slLinesRef.current = [
+				series.createPriceLine({ price: slPrice, color: 'rgba(239,68,68,0.15)', lineWidth: 4, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: '' }),
+				series.createPriceLine({ price: slPrice, color: 'rgba(239,68,68,0.35)', lineWidth: 3, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: '' }),
+				series.createPriceLine({ price: slPrice, color: 'rgba(239,68,68,0.9)',  lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true,  title: 'SL' }),
+			];
+		}
+	}, [tpPrice, slPrice]);
 
 	// Ręczna obsługa dotyku na mobile — niezawodny tooltip ceny
 	useEffect(() => {

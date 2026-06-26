@@ -140,10 +140,11 @@ describe('Portfel — paper trading', () => {
     cy.contains('+$75.00').should('be.visible'); // realized P/L
   });
 
-  // 4) Udane kupno — egzekucja po świeżej cenie i potwierdzenie (Sekcja 2).
+  // 4) Udane kupno — KUP otwiera modal; egzekucja po kliknięciu confirm (Sekcja 2).
   it('składa udane zlecenie kupna i pokazuje potwierdzenie egzekucji', () => {
     cy.intercept('GET', '**/api/portfolio', portfolio({ cash: 10000 })).as('portfolio');
     cy.intercept('GET', '**/api/trades', { body: { trades: [] } });
+    cy.intercept('GET', '**/api/lots', { body: { lots: [] } });
     stubChart();
     cy.intercept('POST', '**/api/orders', {
       statusCode: 200,
@@ -161,26 +162,40 @@ describe('Portfel — paper trading', () => {
     visitDashboard();
     cy.wait('@chart'); // cena dotarła do OrderPanel
 
-    cy.contains('button', 'Buy').should('not.be.disabled').click();
+    // Click Buy → modal opens → confirm places order
+    cy.contains('button', 'Buy').filter(':visible').should('not.be.disabled').click();
+    cy.contains('Buy AAPL').should('be.visible');
+    cy.contains('button', 'Buy 1 × AAPL').click();
     cy.wait('@order');
 
-    cy.contains('Bought 1× AAPL @ $100.00').should('be.visible');
+    cy.get('[data-cy="snackbar"][data-visible="true"]')
+      .should('contain.text', 'Bought 1× AAPL @ $100.00');
   });
 
-  // 5) Walidacja (Sekcja 7) — bez środków nie kupisz, bez akcji nie sprzedasz.
+  // 5) Walidacja (Sekcja 7) — bez środków przycisk confirm w modalu jest disabled;
+  //    bez pozycji przycisk Sprzedaj jest disabled.
   it('blokuje kupno przy braku środków i sprzedaż przy braku pozycji', () => {
     // Cash $50, cena $100 → koszt > cash; brak pozycji → nic do sprzedania.
     cy.intercept('GET', '**/api/portfolio', portfolio({ cash: 50, positions: [] })).as(
       'portfolio',
     );
     cy.intercept('GET', '**/api/trades', { body: { trades: [] } });
+    cy.intercept('GET', '**/api/lots', { body: { lots: [] } });
     stubChart();
 
     visitDashboard();
     cy.wait('@chart');
     cy.wait('@portfolio');
 
-    cy.contains('button', 'Buy').should('be.disabled');
-    cy.contains('button', 'Sell').should('be.disabled');
+    // Buy opens modal — cash validation is inside (confirm disabled)
+    cy.contains('button', 'Buy').filter(':visible').click();
+    cy.contains('insufficient funds').should('be.visible');
+    cy.contains('button', 'Buy 1 × AAPL').should('be.disabled');
+    // Close modal by clicking backdrop
+    cy.get('body').click(0, 0);
+    cy.contains('Buy AAPL').should('not.exist');
+
+    // Sell still disabled — no open position
+    cy.contains('button', 'Sell').filter(':visible').should('be.disabled');
   });
 });

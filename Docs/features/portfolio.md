@@ -1,8 +1,7 @@
-# Portfel użytkownika — Faza 1 (specyfikacja zamrożona)
+# Portfel użytkownika
 
 > Paper trading na realnych cenach z Finnhub (free tier).
-> Status: wizja zatwierdzona — gotowa do implementacji.
-> Stack docelowy: Next.js (App Router) + Supabase (Postgres) + Finnhub.
+> Stack: Next.js (App Router) + Supabase (Postgres) + Finnhub.
 
 ---
 
@@ -43,7 +42,32 @@ SPRZEDAJ:
 
 ### Średnia cena zakupu (avg entry)
 Jeśli użytkownik kupi ten sam ticker kilka razy po różnych cenach,
-pozycja przechowuje **jedną średnią ważoną** cenę wejścia, nie listę cen.
+pozycja w tabeli `positions` przechowuje **jedną średnią ważoną** cenę wejścia.
+Szczegóły każdego zakupu (w tym TP/SL) żyją w osobnych **lotach** (`position_lots`).
+
+### Model lotowy — TP/SL
+
+Każde kliknięcie **Kup** tworzy oddzielny **lot** w `position_lots` z opcjonalnym:
+- **Take Profit** — cena absolutna, po osiągnięciu której lot jest zamykany z zyskiem.
+- **Stop Loss** — cena absolutna, po osiągnięciu której lot jest zamykany ze stratą.
+
+```
+KUP (z TP/SL):
+  position_lots += { qty, entry_price, take_profit, stop_loss, status: 'open' }
+  positions     → avg entry przeliczana z otwartych lotów (średnia ważona)
+
+AUTO-ZAMKNIĘCIE (cron co minutę):
+  jeśli cena >= take_profit  → lot.status = 'closed', close_reason = 'take_profit'
+  jeśli cena <= stop_loss    → lot.status = 'closed', close_reason = 'stop_loss'
+  cash += qty × cena_zamknięcia
+  positions → avg entry przeliczana z pozostałych lotów
+
+ZAMKNIĘCIE RĘCZNE:
+  „Zamknij lot"  → zamknij wybrany lot (close_reason = 'manual')
+  „Sprzedaj wszystko" → zamknij wszystkie otwarte loty tickera
+```
+
+Tabela `positions` pozostaje **agregatem** (ilość + avg entry) wyliczanym z otwartych lotów po każdej zmianie — zachowuje kompatybilność z istniejącym kodem wyświetlania.
 
 ---
 
@@ -85,12 +109,15 @@ Poza sesją Finnhub zwraca ostatnią cenę zamknięcia (cena stoi w miejscu).
 ## 5. Widoki
 
 ### Zakładka „Pozycje"
-Dla każdej otwartej pozycji:
-- ticker
-- ilość posiadanych akcji
-- avg entry (cena zakupu / średnia ważona)
-- cena aktualna (z cache)
-- **P/L %** względem ceny zakupu (unrealized)
+Lista tickerów z otwartymi pozycjami — **rozwijalne**. Każdy ticker expanduje się do listy lotów.
+
+Agregat (ticker):
+- ilość łączna, avg entry (ważona), cena aktualna, **P/L %** unrealized
+
+Lot (po rozwinięciu):
+- ilość, cena wejścia, P/L % lotu
+- ikona TP z ceną (jeśli ustawiona) · ikona SL z ceną (jeśli ustawiona)
+- kliknięcie lotu → zmiana aktywnego tickera + **linie TP/SL na wykresie**
 
 ### Zakładka „Historia transakcji"
 Niezmienny ledger. Każdy wpis (kup / sprzedaj):
@@ -152,7 +179,7 @@ portfel skrócony w TopBarze.
 | **Pozycje** | otwarte akcje: ilość, avg entry, cena aktualna, P/L % | sidebar tab |
 | **Historia** | log buy/sell + realized P/L | sidebar tab |
 | **Portfel/Balans** | cash, total value, P/L % | TopBar + pełny widok |
-| **Kup/Sprzedaj** | wybór instrumentu, kwota $ ⇄ ilość (ułamkowa) | panel pod wykresem |
+| **Kup/Sprzedaj** | wybór instrumentu, kwota $ ⇄ ilość (ułamkowa) · TP/SL opcjonalnie | panel pod wykresem |
 
 ### Rekomendacja wdrożenia
 Jeden komponent zakładek obsługuje oba tryby: jako **sidebar** (desktop)
@@ -175,23 +202,23 @@ To naturalna ewolucja obecnej watchlisty, nie przepisywanie od zera.
 ## 7. Model danych (logicznie)
 
 ```
-portfolios   (user_id, cash, initial_balance)
-positions    (portfolio_id, ticker, quantity, avg_entry_price)   -- quantity numeric(18,6)
-trades       (portfolio_id, ticker, side, quantity, price, executed_at, realized_pnl)  -- quantity numeric(18,6)
-price_cache  (ticker, price, fetched_at)   -- wspólny dla wszystkich userów
+portfolios      (user_id, cash, initial_balance)
+positions       (portfolio_id, ticker, quantity, avg_entry_price)   -- agregat; quantity numeric(18,6)
+position_lots   (portfolio_id, ticker, quantity, entry_price,
+                 take_profit?, stop_loss?,
+                 status: open|closed, close_reason: manual|take_profit|stop_loss,
+                 opened_at, closed_at, close_price)
+trades          (portfolio_id, ticker, side, quantity, price, executed_at, realized_pnl)
+price_cache     (ticker, price, fetched_at)   -- wspólny dla wszystkich userów
 ```
 
-> `quantity` to `numeric(18,6)` (akcje ułamkowe) — patrz `0003_fractional_shares.sql`.
-
-Zasada: **cena nigdy nie liczona w UI**. Pozycje wyliczane z transakcji,
-historia to niezmienny ledger, cache cen to jedyne źródło prawdy dla
-wartości rynkowej.
+Zasada: **cena nigdy nie liczona w UI**. Tabela `positions` to agregat wyliczany z `position_lots`. Historia (`trades`) to niezmienny ledger — każde zamknięcie lotu (ręczne lub auto TP/SL) dopisuje wpis.
 
 ---
 
-## 8. Poza Fazą 1 (backlog)
+## 8. Backlog
 
 - Reset portfela (przywrócenie balansu startowego, czyszczenie pozycji)
 - Pełna blokada handlu przy zamkniętej giełdzie
-- Stop-loss / take-profit
 - Wykres wartości portfela w czasie
+- Edycja TP/SL po otwarciu lotu (bez zamykania)

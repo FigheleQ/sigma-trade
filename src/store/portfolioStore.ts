@@ -1,6 +1,6 @@
 // ============================================================
 // Portfolio store — Zustand
-// Stan portfela + historia + składanie zleceń (przez API routes).
+// Stan portfela + historia + loty TP/SL + składanie zleceń.
 // ============================================================
 import { create } from 'zustand';
 import type {
@@ -8,17 +8,22 @@ import type {
   Trade,
   OrderRequest,
   OrderResult,
+  PositionLot,
 } from '@/lib/portfolio/types';
 
 interface PortfolioStore {
   portfolio: PortfolioState | null;
   trades: Trade[];
+  lots: PositionLot[];
+  selectedLotId: string | null;
   loading: boolean;
   ordering: boolean;
   error: string | null;
 
   fetchPortfolio: () => Promise<void>;
   fetchTrades: () => Promise<void>;
+  fetchLots: () => Promise<void>;
+  selectLot: (lotId: string | null) => void;
   placeOrder: (
     req: OrderRequest,
   ) => Promise<{ ok: boolean; error?: string; result?: OrderResult }>;
@@ -27,6 +32,8 @@ interface PortfolioStore {
 export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
   portfolio: null,
   trades: [],
+  lots: [],
+  selectedLotId: null,
   loading: false,
   ordering: false,
   error: null,
@@ -56,6 +63,21 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
     }
   },
 
+  fetchLots: async () => {
+    try {
+      const res = await fetch('/api/lots');
+      if (!res.ok) return;
+      const data = (await res.json()) as { lots: PositionLot[] };
+      set({ lots: data.lots });
+    } catch {
+      // cicho
+    }
+  },
+
+  selectLot: (lotId) => {
+    set({ selectedLotId: lotId });
+  },
+
   placeOrder: async (req) => {
     set({ ordering: true, error: null });
     try {
@@ -70,8 +92,9 @@ export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
         return { ok: false, error: data.error ?? 'Błąd zlecenia' };
       }
       const result = data as OrderResult;
-      set({ portfolio: result.portfolio });
+      set({ portfolio: result.portfolio, selectedLotId: null });
       void get().fetchTrades();
+      void get().fetchLots();
       return { ok: true, result };
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Błąd';
