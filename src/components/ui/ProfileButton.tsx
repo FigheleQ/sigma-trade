@@ -28,8 +28,8 @@ export default function ProfileButton({ email }: { email: string }) {
 
   return (
     <div ref={ref} className="relative flex items-center gap-3">
-      {/* Welcome text */}
-      <span className="font-mono text-xs text-gray-400 tracking-wide">
+      {/* Welcome text — hidden on mobile to keep the TopBar on one line */}
+      <span className="hidden sm:inline font-mono text-xs text-gray-400 tracking-wide">
         Welcome,{" "}
         <span className="text-gray-200 font-semibold">{displayName}</span>
       </span>

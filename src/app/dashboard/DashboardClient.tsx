@@ -149,10 +149,10 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
           <div className="md:hidden">
             <MobileTickerDrawer />
           </div>
-          <span className="font-mono text-sm font-semibold text-gray-100 tracking-wide">
+          <span className="font-mono text-sm font-semibold text-gray-100 tracking-wide whitespace-nowrap shrink-0">
             Sigma Trade
           </span>
-          <span className="font-mono text-xs text-gray-400">v0.2.0</span>
+          <span className="hidden sm:inline font-mono text-xs text-gray-400">v0.2.0</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <span className="hidden md:block font-mono text-xs text-gray-400 uppercase tracking-wider">
