@@ -1,0 +1,52 @@
+<svg data-dc-tpl="267" id="news-white-icon" width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" data-om-id="2eb4b333:272">
+      <defs data-dc-tpl="268" data-om-id="2eb4b333:273">
+        <radialGradient data-dc-tpl="269" id="nw-bg" cx="50%" cy="44%" r="55%" data-om-id="2eb4b333:274">
+          <stop data-dc-tpl="270" offset="0%" stop-color="#2e2e2e" data-om-id="2eb4b333:275"/>
+          <stop data-dc-tpl="271" offset="100%" stop-color="#141414" data-om-id="2eb4b333:276"/>
+        </radialGradient>
+        <radialGradient data-dc-tpl="272" id="nw-halo" cx="50%" cy="46%" r="50%" data-om-id="2eb4b333:277">
+          <stop data-dc-tpl="273" offset="0%" stop-color="#ffffff" stop-opacity="0.16" data-om-id="2eb4b333:278"/>
+          <stop data-dc-tpl="274" offset="60%" stop-color="#ffffff" stop-opacity="0.04" data-om-id="2eb4b333:279"/>
+          <stop data-dc-tpl="275" offset="100%" stop-color="#ffffff" stop-opacity="0" data-om-id="2eb4b333:280"/>
+        </radialGradient>
+        <filter data-dc-tpl="276" id="nw-glow" data-om-id="2eb4b333:281">
+          <feGaussianBlur data-dc-tpl="277" stdDeviation="4" result="blur" data-om-id="2eb4b333:282"/>
+          <feMerge data-dc-tpl="278" data-om-id="2eb4b333:283"><feMergeNode data-dc-tpl="279" in="blur" data-om-id="2eb4b333:284"/><feMergeNode data-dc-tpl="280" in="SourceGraphic" data-om-id="2eb4b333:285"/></feMerge>
+        </filter>
+      </defs>
+      
+      <circle data-dc-tpl="281" cx="256" cy="256" r="256" fill="url(#nw-bg)" data-om-id="2eb4b333:286"/>
+      
+      <circle data-dc-tpl="282" cx="256" cy="248" r="200" fill="url(#nw-halo)" data-om-id="2eb4b333:287"/>
+
+      
+      <rect data-dc-tpl="283" x="146" y="134" width="220" height="244" rx="18" fill="#ffffff" opacity="0.05" data-om-id="2eb4b333:288"/>
+      <rect data-dc-tpl="284" x="146" y="134" width="220" height="244" rx="18" fill="none" stroke="#ffffff" stroke-width="15" filter="url(#nw-glow)" data-om-id="2eb4b333:289"/>
+
+      
+      <rect data-dc-tpl="285" x="176" y="164" width="160" height="26" rx="5" fill="#ffffff" filter="url(#nw-glow)" data-om-id="2eb4b333:290"/>
+      
+      <line data-dc-tpl="286" x1="176" y1="206" x2="336" y2="206" stroke="#ffffff" stroke-width="3" opacity="0.3" data-om-id="2eb4b333:291"/>
+
+      
+      <line data-dc-tpl="287" x1="256" y1="222" x2="256" y2="350" stroke="#ffffff" stroke-width="3" opacity="0.25" data-om-id="2eb4b333:292"/>
+
+      
+      <rect data-dc-tpl="288" x="176" y="228" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:293"/>
+      <rect data-dc-tpl="289" x="176" y="250" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:294"/>
+      <rect data-dc-tpl="290" x="176" y="272" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:295"/>
+      <rect data-dc-tpl="291" x="176" y="294" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:296"/>
+      <rect data-dc-tpl="292" x="176" y="316" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:297"/>
+      <rect data-dc-tpl="293" x="176" y="338" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:298"/>
+      
+      <rect data-dc-tpl="294" x="274" y="228" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:299"/>
+      <rect data-dc-tpl="295" x="274" y="250" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:300"/>
+      <rect data-dc-tpl="296" x="274" y="272" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:301"/>
+      <rect data-dc-tpl="297" x="274" y="294" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:302"/>
+      <rect data-dc-tpl="298" x="274" y="316" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:303"/>
+      <rect data-dc-tpl="299" x="274" y="338" width="62" height="9" rx="4.5" fill="#ffffff" opacity="0.4" data-om-id="2eb4b333:304"/>
+
+      
+      <circle data-dc-tpl="300" cx="380" cy="132" r="34" fill="#1c1c1c" data-om-id="2eb4b333:305"/>
+      <path data-dc-tpl="301" d="M380,96 L390.5,121.5 L416,132 L390.5,142.5 L380,168 L369.5,142.5 L344,132 L369.5,121.5 Z" fill="#ffffff" filter="url(#nw-glow)" data-om-id="2eb4b333:306"/>
+    </svg>

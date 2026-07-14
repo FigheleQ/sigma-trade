@@ -1,7 +1,6 @@
 'use client';
 
 import {
-	Newspaper,
 	BarChart3,
 	MessageCircle,
 	Target,
@@ -30,11 +29,16 @@ export interface AgentMeta {
 	badgeVariant: 'default' | 'critical';
 }
 
-const AGENT_ICONS: Record<Exclude<AgentId, 'coach'>, LucideIcon> = {
-	news: Newspaper,
+const AGENT_ICONS: Record<'technical' | 'sentiment' | 'orchestrator', LucideIcon> = {
 	technical: BarChart3,
 	sentiment: MessageCircle,
 	orchestrator: Target,
+};
+
+// Agents rendered with a custom SVG icon — white by default, green on hover/active.
+const AGENT_SVGS: Partial<Record<AgentId, { white: string; green: string }>> = {
+	news: { white: '/news-agent-icon-white.svg', green: '/news-agent-icon-green.svg' },
+	coach: { white: '/coach-icon-white.svg', green: '/coach-icon.svg' },
 };
 interface AgentSidebarProps {
   agents: AgentMeta[];
@@ -52,7 +56,8 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 	return (
 		<div className='flex md:flex-col flex-row items-center gap-3 py-4 px-2'>
 			{agents.map((agent) => {
-				const Icon = agent.id !== 'coach' ? AGENT_ICONS[agent.id as Exclude<AgentId, 'coach'>] : null;
+				const svg = AGENT_SVGS[agent.id];
+				const Icon = !svg ? AGENT_ICONS[agent.id as keyof typeof AGENT_ICONS] : null;
 				const isActive = activeAgent === agent.id;
 				const isDisabled = !agent.enabled;
 
@@ -66,8 +71,6 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 						: agent.badgeVariant;
 				const hasBadge = badgeCount > 0;
 
-				const isCoach = agent.id === 'coach';
-
 				return (
 					<div key={agent.id} className='relative group'>
 						<button
@@ -79,7 +82,6 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 							aria-label={isDisabled ? `${agent.name} — coming in Phase 2` : agent.name}
 							className={cn(
 								'relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center',
-								isCoach && 'overflow-hidden',
 								'bg-bg-panel border border-border-subtle',
 								'transition-all duration-150',
 								isActive && 'ring-2 ring-accent border-accent',
@@ -90,18 +92,29 @@ export default function AgentSidebar({ agents, activeAgent, onAgentChange }: Age
 								!isDisabled && 'cursor-pointer',
 							)}
 						>
-							{isCoach ? (
-								<img
-									src="/coach-icon-white.svg"
-									alt="Coach"
-									width={56}
-									height={56}
-									className={cn(
-										'rounded transition-opacity',
-										isDisabled && 'opacity-40',
-										coachBusy && 'coach-icon-glow',
-									)}
-								/>
+							{svg ? (
+								<>
+									{/* White by default; green fades in on hover or when active. */}
+									<img
+										src={svg.white}
+										alt={agent.name}
+										className={cn(
+											'absolute inset-0 w-full h-full rounded-full transition-opacity duration-150',
+											agent.id === 'coach' && coachBusy && 'coach-icon-glow',
+											isActive ? 'opacity-0' : 'opacity-100 group-hover:opacity-0',
+										)}
+									/>
+									<img
+										src={svg.green}
+										alt=""
+										aria-hidden="true"
+										className={cn(
+											'absolute inset-0 w-full h-full rounded-full transition-opacity duration-150',
+											agent.id === 'coach' && coachBusy && 'coach-icon-glow',
+											isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+										)}
+									/>
+								</>
 							) : Icon ? (
 								<Icon
 									size={22}

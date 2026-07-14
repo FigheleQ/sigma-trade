@@ -299,6 +299,9 @@ export default function NewsFeed({ intervalSeconds, autoFetch }: NewsFeedProps) 
     }
   }, [updateArticle]);
 
+  // The agent is "working" while fetching the feed or analyzing any article.
+  const isBusy = fetchStatus === 'fetching' || analyzingIds.size > 0;
+
   const lastFetchedStr = lastFetchedAt
     ? new Date(lastFetchedAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -309,7 +312,14 @@ export default function NewsFeed({ intervalSeconds, autoFetch }: NewsFeedProps) 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle shrink-0">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-zinc-400 uppercase tracking-wider">News</span>
+            <img
+              src="/news-agent-icon-green.svg"
+              alt="News Agent"
+              width={32}
+              height={32}
+              className={cn('rounded shrink-0', isBusy && 'coach-icon-glow')}
+            />
+            <span className="font-mono text-xs text-zinc-400 uppercase tracking-wider">News Agent</span>
             {fetchStatus === 'fetching' && (
               <span className="font-mono text-[10px] text-accent animate-pulse">fetching…</span>
             )}

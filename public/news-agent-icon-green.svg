@@ -1,0 +1,46 @@
+<svg data-dc-tpl="156" id="news-green-icon" width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" data-om-id="2eb4b333:161">
+    <defs data-dc-tpl="157" data-om-id="2eb4b333:162">
+      <radialGradient data-dc-tpl="158" id="ng-bg" cx="50%" cy="46%" r="62%" data-om-id="2eb4b333:163">
+        <stop data-dc-tpl="159" offset="0%" stop-color="#0f2215" data-om-id="2eb4b333:164"/>
+        <stop data-dc-tpl="160" offset="100%" stop-color="#060a07" data-om-id="2eb4b333:165"/>
+      </radialGradient>
+      <filter data-dc-tpl="161" id="ng-glow" data-om-id="2eb4b333:166">
+        <feGaussianBlur data-dc-tpl="162" stdDeviation="4" result="blur" data-om-id="2eb4b333:167"/>
+        <feMerge data-dc-tpl="163" data-om-id="2eb4b333:168"><feMergeNode data-dc-tpl="164" in="blur" data-om-id="2eb4b333:169"/><feMergeNode data-dc-tpl="165" in="SourceGraphic" data-om-id="2eb4b333:170"/></feMerge>
+      </filter>
+    </defs>
+    
+    <rect data-dc-tpl="166" width="512" height="512" rx="104" fill="url(#ng-bg)" data-om-id="2eb4b333:171"/>
+
+    
+    
+    <rect data-dc-tpl="167" x="146" y="134" width="220" height="244" rx="18" fill="#00ff7f" opacity="0.05" data-om-id="2eb4b333:172"/>
+    <rect data-dc-tpl="168" x="146" y="134" width="220" height="244" rx="18" fill="none" stroke="#00ff7f" stroke-width="15" filter="url(#ng-glow)" data-om-id="2eb4b333:173"/>
+
+    
+    <rect data-dc-tpl="169" x="176" y="164" width="160" height="26" rx="5" fill="#00ff7f" filter="url(#ng-glow)" data-om-id="2eb4b333:174"/>
+    
+    <line data-dc-tpl="170" x1="176" y1="206" x2="336" y2="206" stroke="#00ff7f" stroke-width="3" opacity="0.35" data-om-id="2eb4b333:175"/>
+
+    
+    <line data-dc-tpl="171" x1="256" y1="222" x2="256" y2="350" stroke="#00ff7f" stroke-width="3" opacity="0.3" data-om-id="2eb4b333:176"/>
+
+    
+    <rect data-dc-tpl="172" x="176" y="228" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:177"/>
+    <rect data-dc-tpl="173" x="176" y="250" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:178"/>
+    <rect data-dc-tpl="174" x="176" y="272" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:179"/>
+    <rect data-dc-tpl="175" x="176" y="294" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:180"/>
+    <rect data-dc-tpl="176" x="176" y="316" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:181"/>
+    <rect data-dc-tpl="177" x="176" y="338" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:182"/>
+    
+    <rect data-dc-tpl="178" x="274" y="228" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:183"/>
+    <rect data-dc-tpl="179" x="274" y="250" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:184"/>
+    <rect data-dc-tpl="180" x="274" y="272" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:185"/>
+    <rect data-dc-tpl="181" x="274" y="294" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:186"/>
+    <rect data-dc-tpl="182" x="274" y="316" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:187"/>
+    <rect data-dc-tpl="183" x="274" y="338" width="62" height="9" rx="4.5" fill="#00ff7f" opacity="0.42" data-om-id="2eb4b333:188"/>
+
+    
+    <circle data-dc-tpl="184" cx="380" cy="132" r="34" fill="#060a07" data-om-id="2eb4b333:189"/>
+    <path data-dc-tpl="185" d="M380,96 L390.5,121.5 L416,132 L390.5,142.5 L380,168 L369.5,142.5 L344,132 L369.5,121.5 Z" fill="#00ff7f" filter="url(#ng-glow)" data-om-id="2eb4b333:190"/>
+  </svg>
