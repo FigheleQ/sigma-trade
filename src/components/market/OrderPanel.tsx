@@ -108,6 +108,7 @@ function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModa
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <button
+                data-cy="tp-toggle"
                 onClick={() => setTpEnabled((v) => !v)}
                 className={cn(
                   'w-8 h-4 rounded-full transition-colors relative shrink-0',
@@ -123,6 +124,7 @@ function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModa
               <span className="font-mono text-[11px] text-zinc-400 uppercase tracking-wider">Take Profit</span>
             </div>
             <input
+              data-cy="tp-input"
               type="number"
               min={0}
               step={0.01}
@@ -142,6 +144,7 @@ function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModa
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <button
+                data-cy="sl-toggle"
                 onClick={() => setSlEnabled((v) => !v)}
                 className={cn(
                   'w-8 h-4 rounded-full transition-colors relative shrink-0',
@@ -157,6 +160,7 @@ function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModa
               <span className="font-mono text-[11px] text-zinc-400 uppercase tracking-wider">Stop Loss</span>
             </div>
             <input
+              data-cy="sl-input"
               type="number"
               min={0}
               step={0.01}
@@ -176,6 +180,7 @@ function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModa
         {/* Footer */}
         <div className="px-5 pb-5">
           <button
+            data-cy="buy-confirm"
             onClick={handleConfirm}
             disabled={!canAfford || ordering}
             className={cn(
@@ -186,6 +191,116 @@ function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModa
             )}
           >
             {ordering ? 'Processing…' : `Buy ${qty} × ${ticker}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sell modal ───────────────────────────────────────────────
+
+interface SellModalProps {
+  ticker: string;
+  price: number;
+  owned: number;
+  ordering: boolean;
+  onConfirm: (qty: number) => void;
+  onClose: () => void;
+}
+
+function SellModal({ ticker, price, owned, ordering, onConfirm, onClose }: SellModalProps) {
+  const [qty, setQty] = useState(owned);
+
+  const clamp = (n: number) => Math.min(owned, Math.max(1, Math.floor(n || 1)));
+  const proceeds = price * qty;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="relative w-full max-w-sm mx-4 mb-4 md:mb-0 bg-bg-panel border border-border-subtle rounded-xl shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-sm font-bold text-gray-100">Sell {ticker}</span>
+            <span className="font-mono text-xs text-zinc-400 tabular-nums">{fmtUSD(price)}</span>
+          </div>
+          <button onClick={onClose} className="text-zinc-600 hover:text-zinc-300 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 flex flex-col gap-5">
+
+          {/* Quantity */}
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] text-zinc-400 uppercase tracking-wider">Quantity</span>
+            <div className="flex items-center border border-border-subtle rounded overflow-hidden">
+              <button
+                data-cy="sell-dec"
+                onClick={() => setQty((q) => clamp(q - 1))}
+                className="px-2.5 py-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+              >
+                <Minus size={13} />
+              </button>
+              <input
+                data-cy="sell-qty"
+                type="number"
+                min={1}
+                max={owned}
+                value={qty}
+                onChange={(e) => setQty(clamp(Number(e.target.value)))}
+                className="w-14 bg-transparent text-center font-mono text-sm text-gray-100 outline-none tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                onClick={() => setQty((q) => clamp(q + 1))}
+                className="px-2.5 py-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+              >
+                <Plus size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* Holdings */}
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] text-zinc-400 uppercase tracking-wider">Holdings</span>
+            <button
+              onClick={() => setQty(owned)}
+              className="font-mono text-sm text-zinc-400 tabular-nums hover:text-gray-100 transition-colors"
+            >
+              {fmtShares(owned)} shr
+            </button>
+          </div>
+
+          {/* Proceeds */}
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] text-zinc-400 uppercase tracking-wider">Proceeds</span>
+            <span className="font-mono text-sm text-gray-100 tabular-nums">{fmtUSD(proceeds)}</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 pb-5">
+          <button
+            data-cy="sell-confirm"
+            onClick={() => onConfirm(qty)}
+            disabled={ordering || owned < 1}
+            className={cn(
+              'w-full py-2.5 rounded-lg font-mono text-[12px] font-bold uppercase tracking-wider transition-colors',
+              !ordering && owned >= 1
+                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30'
+                : 'bg-zinc-900 text-zinc-700 cursor-not-allowed border border-zinc-800',
+            )}
+          >
+            {ordering ? 'Processing…' : `Sell ${qty} × ${ticker}`}
           </button>
         </div>
       </div>
@@ -208,6 +323,7 @@ export default function OrderPanel() {
   const selectLot = usePortfolioStore((s) => s.selectLot);
 
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const [showSellModal, setShowSellModal] = useState(false);
   const [snack, setSnack] = useState<SnackbarMessage | null>(null);
 
   const notify = (type: 'ok' | 'err', text: string) =>
@@ -219,6 +335,7 @@ export default function OrderPanel() {
 
   useEffect(() => {
     setShowBuyModal(false);
+    setShowSellModal(false);
   }, [ticker]);
 
   if (!ticker) return null;
@@ -247,12 +364,13 @@ export default function OrderPanel() {
     }
   };
 
-  const handleSell = async (lotId?: string) => {
+  const handleSell = async (opts?: { lotId?: string; quantity?: number }) => {
     const res = await placeOrder(
-      lotId
-        ? { ticker, side: 'sell', quantity: 1, lotId }
-        : { ticker, side: 'sell', quantity: owned },
+      opts?.lotId
+        ? { ticker, side: 'sell', quantity: 1, lotId: opts.lotId }
+        : { ticker, side: 'sell', quantity: opts?.quantity ?? owned },
     );
+    setShowSellModal(false);
     if (res.ok && res.result) {
       const r = res.result;
       notify('ok', `Sold ${fmtShares(r.quantity)}× ${r.ticker} @ ${fmtUSD(r.executionPrice)}  ·  P/L ${fmtSignedUSD(r.realizedPnL ?? 0)}`);
@@ -272,6 +390,16 @@ export default function OrderPanel() {
           ordering={ordering}
           onConfirm={handleBuyConfirm}
           onClose={() => setShowBuyModal(false)}
+        />
+      )}
+      {showSellModal && price != null && owned > 0 && (
+        <SellModal
+          ticker={ticker}
+          price={price}
+          owned={owned}
+          ordering={ordering}
+          onConfirm={(qty) => void handleSell({ quantity: qty })}
+          onClose={() => setShowSellModal(false)}
         />
       )}
 
@@ -319,6 +447,7 @@ export default function OrderPanel() {
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <div className="flex items-center gap-2">
               <button
+                data-cy="buy-btn"
                 onClick={() => setShowBuyModal(true)}
                 disabled={!canBuy}
                 className={cn(
@@ -334,7 +463,8 @@ export default function OrderPanel() {
               {selectedLot ? (
                 <>
                   <button
-                    onClick={() => void handleSell(selectedLot.id)}
+                    data-cy="close-lot-btn"
+                    onClick={() => void handleSell({ lotId: selectedLot.id })}
                     disabled={!canSellLot}
                     className={cn(
                       'px-4 py-1.5 rounded font-mono text-[11px] font-bold uppercase tracking-wider transition-colors',
@@ -346,6 +476,7 @@ export default function OrderPanel() {
                     Close lot
                   </button>
                   <button
+                    data-cy="sell-all-btn"
                     onClick={() => void handleSell()}
                     disabled={!canSellAll}
                     className={cn(
@@ -360,7 +491,8 @@ export default function OrderPanel() {
                 </>
               ) : (
                 <button
-                  onClick={() => void handleSell()}
+                  data-cy="sell-btn"
+                  onClick={() => setShowSellModal(true)}
                   disabled={!canSellAll}
                   className={cn(
                     'px-4 py-1.5 rounded font-mono text-[11px] font-bold uppercase tracking-wider transition-colors',
