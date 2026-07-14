@@ -7,9 +7,10 @@
 //   • tworzy lot w position_lots z opcjonalnym TP/SL
 //   • aktualizuje agregat w positions (avg entry ważona)
 //
-// SELL: { ticker, side:'sell', lotId? }
-//   • lotId podany → zamknij ten konkretny lot
-//   • lotId brak   → zamknij wszystkie otwarte loty tickera
+// SELL: { ticker, side:'sell', lotId? | quantity? }
+//   • lotId podany   → zamknij ten konkretny lot
+//   • quantity podane → sprzedaj tyle akcji, konsumując loty FIFO (dzieli ostatni)
+//   • bez obu        → zamknij wszystkie otwarte loty tickera
 //   • przelicza agregat positions z pozostałych lotów
 // ============================================================
 import { NextResponse } from 'next/server';
@@ -156,33 +157,80 @@ export async function POST(req: Request): Promise<NextResponse> {
           .eq('id', lotId);
 
       } else {
-        // Close all open lots for this ticker.
+        // Open lots for this ticker, oldest first (FIFO).
         const { data: openLots } = await supabase
           .from('position_lots')
           .select('id, quantity, entry_price')
           .eq('portfolio_id', portfolio.id)
           .eq('ticker', ticker)
-          .eq('status', 'open');
+          .eq('status', 'open')
+          .order('opened_at', { ascending: true });
 
         if (!openLots || openLots.length === 0) {
           return NextResponse.json({ error: 'No open lots to close' }, { status: 400 });
         }
 
-        executedQty = openLots.reduce((sum, l) => sum + Number(l.quantity), 0);
-        realizedPnL = openLots.reduce((sum, l) => {
-          return sum + (price - Number(l.entry_price)) * Number(l.quantity);
-        }, 0);
+        const totalOwned = openLots.reduce((sum, l) => sum + Number(l.quantity), 0);
 
-        const lotIds = openLots.map((l) => l.id);
-        await supabase
-          .from('position_lots')
-          .update({
-            status: 'closed',
-            closed_at: new Date().toISOString(),
-            close_price: price,
-            close_reason: 'manual',
-          })
-          .in('id', lotIds);
+        // Requested quantity (partial) or, absent, the whole position.
+        let sellQty = quantityIn != null ? Math.floor(quantityIn) : totalOwned;
+        if (sellQty > totalOwned) sellQty = totalOwned;
+
+        const now = new Date().toISOString();
+
+        if (sellQty >= totalOwned) {
+          // Close every open lot.
+          executedQty = totalOwned;
+          realizedPnL = openLots.reduce(
+            (sum, l) => sum + (price - Number(l.entry_price)) * Number(l.quantity),
+            0,
+          );
+
+          const lotIds = openLots.map((l) => l.id);
+          await supabase
+            .from('position_lots')
+            .update({ status: 'closed', closed_at: now, close_price: price, close_reason: 'manual' })
+            .in('id', lotIds);
+        } else {
+          // Consume lots FIFO; split the final lot if it is only partially sold.
+          let remaining = sellQty;
+          realizedPnL = 0;
+
+          for (const l of openLots) {
+            if (remaining <= 0) break;
+            const lotQty = Number(l.quantity);
+            const entry = Number(l.entry_price);
+
+            if (lotQty <= remaining) {
+              realizedPnL += (price - entry) * lotQty;
+              await supabase
+                .from('position_lots')
+                .update({ status: 'closed', closed_at: now, close_price: price, close_reason: 'manual' })
+                .eq('id', l.id);
+              remaining -= lotQty;
+            } else {
+              // Sell part of this lot: shrink the open lot and record the sold slice.
+              realizedPnL += (price - entry) * remaining;
+              await supabase
+                .from('position_lots')
+                .update({ quantity: lotQty - remaining })
+                .eq('id', l.id);
+              await supabase.from('position_lots').insert({
+                portfolio_id: portfolio.id,
+                ticker,
+                quantity: remaining,
+                entry_price: entry,
+                status: 'closed',
+                closed_at: now,
+                close_price: price,
+                close_reason: 'manual',
+              });
+              remaining = 0;
+            }
+          }
+
+          executedQty = sellQty;
+        }
       }
 
       // Recalculate positions aggregate from remaining open lots.

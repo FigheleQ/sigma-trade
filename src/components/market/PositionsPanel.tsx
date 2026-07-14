@@ -80,6 +80,7 @@ export default function PositionsPanel() {
               <div key={p.ticker} className="border-b border-border-subtle">
                 {/* Ticker aggregate row */}
                 <button
+                  data-cy={`pos-ticker-${p.ticker}`}
                   onClick={() => handleTickerClick(p.ticker)}
                   className="w-full px-3 py-2.5 text-left hover:bg-bg-panel transition-colors"
                 >
@@ -134,6 +135,7 @@ export default function PositionsPanel() {
                       return (
                         <button
                           key={lot.id}
+                          data-cy={`pos-lot-${lot.id}`}
                           onClick={(e) => handleLotClick(e, lot.id, lot.ticker)}
                           className={cn(
                             'w-full px-3 py-2 text-left transition-colors border-t border-border-subtle/50',
