@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   Search, ChevronDown, ChevronRight,
   GripVertical, Pencil, Trash2, Check,
-  ChevronsLeft, ChevronsRight, Star,
+  ChevronsLeft, ChevronsRight, Star, Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -84,6 +84,7 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
     removeFromSection,
     toggleCollapse,
     setActiveTicker,
+    createSection,
     renameSection,
     deleteSection,
     reorderTickers,
@@ -152,6 +153,17 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
       renameSection(editingSectionId, editingName.trim());
     }
     setEditingSectionId(null);
+  };
+
+  // Tworzy nową listę i od razu wchodzi w tryb edycji nazwy — na mobilce
+  // podnosi klawiaturę, więc nazwanie listy to jeden ruch.
+  const handleCreateSection = () => {
+    createSection('New list');
+    const created = useWatchlistStore.getState().sections.at(-1);
+    if (created) {
+      setEditingSectionId(created.id);
+      setEditingName(created.name);
+    }
   };
 
   // ── Mini mode ──────────────────────────────────────────────────────────────
@@ -268,9 +280,10 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                           autoFocus
                           value={editingName}
                           onChange={(e) => setEditingName(e.target.value)}
+                          onFocus={(e) => e.currentTarget.select()}
                           onBlur={saveEdit}
                           onKeyDown={(e) => { if (e.key === 'Escape') setEditingSectionId(null); }}
-                          className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 focus:border-accent rounded px-1.5 py-0.5 font-mono text-[10px] text-zinc-200 focus:outline-none transition-colors"
+                          className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 focus:border-accent rounded px-1.5 py-1.5 md:py-0.5 font-mono text-[11px] md:text-[10px] text-zinc-200 focus:outline-none transition-colors"
                         />
                         <button type="submit" className="text-zinc-500 hover:text-accent shrink-0">
                           <Check size={11} />
@@ -283,9 +296,10 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                           {...gripListeners}
                           {...gripAttributes}
                           tabIndex={-1}
-                          className="pl-1 pr-0 py-2.5 text-zinc-700 hover:text-zinc-500 cursor-grab active:cursor-grabbing opacity-0 group-hover/hdr:opacity-100 transition-opacity shrink-0 touch-none"
+                          aria-label="Przenieś listę"
+                          className="pl-2 pr-1 md:pl-1 md:pr-0 py-2.5 text-zinc-500 md:text-zinc-700 hover:text-zinc-500 cursor-grab active:cursor-grabbing opacity-100 md:opacity-0 md:group-hover/hdr:opacity-100 transition-opacity shrink-0 touch-none"
                         >
-                          <GripVertical size={12} />
+                          <GripVertical className="w-4 h-4 md:w-3 md:h-3" />
                         </button>
 
                         {/* Collapse toggle */}
@@ -305,11 +319,18 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                           )}
                           <span
                             className={cn(
-                              'font-mono text-[11px] uppercase tracking-wider truncate font-medium',
-                              section.id === 'favorites' ? 'text-white' : 'text-zinc-400',
+                              'font-mono text-[11px] uppercase tracking-wider truncate',
+                              // Main i Favorites — hardcoded, wyróżnione (biały, bold).
+                              section.id === 'main' || section.id === 'favorites'
+                                ? 'text-white font-semibold'
+                                : 'text-zinc-400 font-medium',
                             )}
                           >
-                            {section.id === 'favorites' ? 'Favorites' : section.name}
+                            {section.id === 'main'
+                              ? 'Main'
+                              : section.id === 'favorites'
+                                ? 'Favorites'
+                                : section.name}
                           </span>
                           {section.id === 'favorites' && (
                             <Star size={10} className="shrink-0 text-yellow-400 fill-yellow-400" />
@@ -319,23 +340,24 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
                           </span>
                         </button>
 
-                        {/* Rename / delete — hidden for favorites, appear on hover for others */}
-                        {section.id !== 'favorites' && (
-                          <div className="absolute right-1 flex items-center gap-0.5 opacity-0 group-hover/hdr:opacity-100 transition-opacity bg-zinc-900/80 rounded px-0.5">
+                        {/* Rename / delete — hidden for hardcoded Main & Favorites,
+                            appear on hover for the rest. Main pozostaje przenoszalny. */}
+                        {section.id !== 'favorites' && section.id !== 'main' && (
+                          <div className="absolute right-1 flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover/hdr:opacity-100 transition-opacity bg-bg-base md:bg-zinc-900/80 rounded px-0.5">
                             <button
                               onClick={(e) => startEdit(e, section)}
-                              className="p-1 text-zinc-600 hover:text-zinc-300 transition-colors"
+                              className="p-1.5 md:p-1 text-zinc-500 md:text-zinc-600 hover:text-zinc-300 transition-colors"
                               title="Rename"
                             >
-                              <Pencil size={10} />
+                              <Pencil className="w-3.5 h-3.5 md:w-2.5 md:h-2.5" />
                             </button>
                             {!BUILT_IN.includes(section.id) && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); deleteSection(section.id); }}
-                                className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
+                                className="p-1.5 md:p-1 text-zinc-500 md:text-zinc-600 hover:text-red-400 transition-colors"
                                 title="Delete section"
                               >
-                                <Trash2 size={10} />
+                                <Trash2 className="w-3.5 h-3.5 md:w-2.5 md:h-2.5" />
                               </button>
                             )}
                           </div>
@@ -393,6 +415,17 @@ export default function TickerSidebar({ embedded = false }: { embedded?: boolean
           </SortableContext>
         </DndContext>
       </div>
+
+      {/* Nowa lista — stały przycisk, dostępny palcem na mobilce
+          (wcześniej listę dało się stworzyć tylko przez panel „dodaj do listy"). */}
+      <button
+        onClick={handleCreateSection}
+        className="shrink-0 flex items-center justify-center md:justify-start gap-2.5 md:gap-2 px-3 py-4 md:py-2.5 border-t border-border-subtle text-zinc-400 md:text-zinc-500 hover:text-accent active:bg-bg-panel transition-colors"
+        title="Create new list"
+      >
+        <Plus className="w-5 h-5 md:w-3.5 md:h-3.5 shrink-0" />
+        <span className="font-mono text-[13px] md:text-[10px] uppercase tracking-wider">New list</span>
+      </button>
 
       {listPanelFor && (
         <ListPanel
