@@ -33,6 +33,7 @@ import ProfileButton from '@/components/ui/ProfileButton';
 import PortfolioSummary from '@/components/market/PortfolioSummary';
 import { X } from 'lucide-react';
 import MobileTickerDrawer from '@/components/market/MobileTickerDrawer';
+import MobilePortfolioBar from '@/components/market/MobilePortfolioBar';
 import CoachIntroPopup from '@/components/agents/CoachIntroPopup';
 import { cn } from '@/lib/utils';
 
@@ -148,10 +149,10 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
           <div className="md:hidden">
             <MobileTickerDrawer />
           </div>
-          <span className="font-mono text-sm font-semibold text-gray-100 tracking-wide">
+          <span className="font-mono text-sm font-semibold text-gray-100 tracking-wide whitespace-nowrap shrink-0">
             Sigma Trade
           </span>
-          <span className="font-mono text-xs text-gray-400">v0.2.0</span>
+          <span className="hidden sm:inline font-mono text-xs text-gray-400">v0.2.0</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <span className="hidden md:block font-mono text-xs text-gray-400 uppercase tracking-wider">
@@ -224,6 +225,9 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
 
       {/* ── MOBILE layout (<md) ──────────────────────────────────── */}
       <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+        {/* Podgląd portfela — stały pasek + bottom sheet (mobile) */}
+        <MobilePortfolioBar />
+
         {/* Market View zajmuje całą przestrzeń */}
         <div className="flex-1 overflow-hidden min-h-0">
           <MarketView />
