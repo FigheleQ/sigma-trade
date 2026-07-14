@@ -33,6 +33,7 @@ import ProfileButton from '@/components/ui/ProfileButton';
 import PortfolioSummary from '@/components/market/PortfolioSummary';
 import { X } from 'lucide-react';
 import MobileTickerDrawer from '@/components/market/MobileTickerDrawer';
+import MobilePortfolioBar from '@/components/market/MobilePortfolioBar';
 import CoachIntroPopup from '@/components/agents/CoachIntroPopup';
 import { cn } from '@/lib/utils';
 
@@ -224,6 +225,9 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
 
       {/* ── MOBILE layout (<md) ──────────────────────────────────── */}
       <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+        {/* Podgląd portfela — stały pasek + bottom sheet (mobile) */}
+        <MobilePortfolioBar />
+
         {/* Market View zajmuje całą przestrzeń */}
         <div className="flex-1 overflow-hidden min-h-0">
           <MarketView />
