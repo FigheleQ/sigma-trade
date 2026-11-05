@@ -11,9 +11,9 @@
 // ============================================================
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AbuseState } from '@/lib/ai/guard';
-import type { UserStrategy } from './types';
+import type { SlotState } from './slots';
 
-export type SlotState = Partial<UserStrategy>;
+export type { SlotState };
 
 export interface ThreadState {
   summary: string | null;
@@ -80,6 +80,23 @@ export async function saveThread(
     { onConflict: 'user_id' },
   );
   if (error) console.warn('[coach/thread] persist skipped (memory only):', error.message);
+}
+
+// Zapis TYLKO streszczenia (wołany w `after()` po odpowiedzi) — nie nadpisuje
+// slotów / licznika, które mogła już zmienić kolejna tura.
+export async function saveSummary(
+  supabase: SupabaseClient,
+  userId: string,
+  summary: string,
+  summarizedUntil: string,
+): Promise<void> {
+  const mem = memory.get(userId);
+  if (mem) memory.set(userId, { ...mem, summary, summarizedUntil });
+  const { error } = await supabase
+    .from('coach_threads')
+    .update({ summary, summarized_until: summarizedUntil, updated_at: new Date().toISOString() })
+    .eq('user_id', userId);
+  if (error) console.warn('[coach/thread] summary persist skipped:', error.message);
 }
 
 // Reset pamięci (DELETE /api/coach) — wątek zaczyna się od zera.

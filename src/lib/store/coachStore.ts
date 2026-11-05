@@ -51,10 +51,11 @@ function localMessage(role: CoachMessage['role'], content: string): CoachMessage
   };
 }
 
-// Historia w formacie modelu (lekkie tury) z aktualnych wiadomości.
-function toTurns(messages: CoachMessage[]): CoachTurn[] {
-  return messages.map((m) => ({ role: m.role, content: m.content }));
-}
+// Odpowiedź /api/coach: CoachReply + pola addytywne AI v2.
+type CoachApiReply = CoachReply & {
+  offTopic?: boolean;
+  recommendations?: Recommendation[];
+};
 
 // Zaczepka pierwszego wejścia — bot przywita i ruszy onboarding.
 const ONBOARDING_KICKOFF: CoachTurn = {
@@ -179,27 +180,40 @@ async function runTurn(
 
   set({ messages: optimistic, status: 'sending', errorMessage: null });
 
-  const history: CoachTurn[] = [...toTurns(baseMessages), userTurn];
-
   try {
+    // AI v2: wysyłamy TYLKO nową wiadomość — historię (przyciętą, bez
+    // off-topic, ze streszczeniem) składa serwer z coach_messages.
     const res = await fetch('/api/coach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ history, strategy: get().strategy }),
+      body: JSON.stringify({ message: userTurn.content, strategy: get().strategy }),
     });
 
     if (!res.ok) {
+      let serverMsg: string | null = null;
+      try {
+        serverMsg = ((await res.json()) as { error?: string }).error ?? null;
+      } catch {
+        // body nie-JSON
+      }
       const msg =
         res.status === 429
-          ? 'Coach is rate limited — try again in a moment.'
+          ? (serverMsg ?? 'Coach is rate limited — try again in a moment.')
           : `Coach error (${res.status})`;
       set({ status: 'error', errorMessage: msg });
       return;
     }
 
-    const reply = (await res.json()) as CoachReply;
+    const reply = (await res.json()) as CoachApiReply;
+    const userBubble = optimistic[optimistic.length - 1];
     set({
-      messages: [...optimistic, localMessage('model', reply.reply)],
+      // Para off-topic: oznaczamy (UI ją przygasza; serwer pomija ją w historii).
+      messages: [
+        ...(reply.offTopic && opts.persistUserBubble
+          ? [...baseMessages, { ...userBubble, offTopic: true }]
+          : optimistic),
+        { ...localMessage('model', reply.reply), ...(reply.offTopic ? { offTopic: true } : {}) },
+      ],
       status: 'idle',
     });
 
@@ -210,6 +224,12 @@ async function runTurn(
         isOnboarded: true,
         needsOnboarding: false,
       });
+      // Serwer (flaga C włączona) policzył już plan i zapisał profil —
+      // nie dublujemy zapytań do /api/strategy.
+      if (Array.isArray(reply.recommendations) && reply.recommendations.length > 0) {
+        set({ recommendations: reply.recommendations, recommendationsSource: 'api' });
+        return;
+      }
       void saveStrategy(reply.strategy);
       try {
         const { recommendations, source } = await getRecommendations(reply.strategy);
