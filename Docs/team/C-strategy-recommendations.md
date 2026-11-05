@@ -46,6 +46,13 @@ Masz dwa źródła, łącz je:
 
 ## 3. Kontrakt z A (najważniejsze, żeby pracować równolegle)
 
+> **Stan AI v2 (2026-11): zrealizowane.** Silnik: `src/lib/strategy/` (catalog, allocate,
+> explain, enrich, validate, store, service), route'y `/api/strategy` i
+> `/api/strategy/recommendations`, migracja `0005_user_strategy.sql`, wszystko za flagą
+> `features.strategy_agent.enabled`. Kontrakt w `types.ts` **rozszerzony wyłącznie addytywnie**
+> (nowe pola opcjonalne w `Recommendation` i `UserStrategy`, opis w nagłówku pliku).
+> Szczegóły: [features/strategy-recommendations.md](../features/strategy-recommendations.md).
+
 - A woła `GET /api/strategy` (czyta profil do kontekstu promptu) i
   `POST /api/strategy/recommendations` (dostaje listę tickerów do pokazania w czacie).
 - **Zamroźcie typy w PR contract-first dnia 1.** Potem A mockuje twoje endpointy, ty budujesz je
