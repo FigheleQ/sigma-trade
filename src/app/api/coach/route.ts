@@ -20,7 +20,7 @@ import { createClient } from '@/lib/supabase/server';
 import { loadConfig, getGeminiSettings, getCoachFlags } from '@/lib/config';
 import { getOrCreatePortfolio } from '@/lib/portfolio/service';
 import { runCoachTurn } from '@/lib/coach/agent';
-import { RateLimitError } from '@/lib/ai/errors';
+import { RateLimitError, GeminiError } from '@/lib/ai/errors';
 import { checkMinuteLimit, checkDayLimit, rateLimitMessage } from '@/lib/ai/rateLimit';
 import { analyzeIntent, templateReply, nextAbuseState, isLocked } from '@/lib/ai/guard';
 import type { GuardContext } from '@/lib/ai/guard';
@@ -288,6 +288,14 @@ export async function POST(req: Request): Promise<NextResponse> {
       return finish(
         { reply: '', onboardingComplete: false, strategy: null, error: 'Coach is busy right now — try again in a moment.' },
         429,
+      );
+    }
+    if (err instanceof GeminiError) {
+      // Provider niedostępny (np. cała pula kluczy 402/403) — czytelny 503 zamiast 500.
+      console.error('[api/coach][POST] Gemini unavailable:', err.message);
+      return finish(
+        { reply: '', onboardingComplete: false, strategy: null, error: 'Coach is temporarily unavailable — please try again later.' },
+        503,
       );
     }
     console.error('[api/coach][POST]', err);

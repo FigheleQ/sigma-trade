@@ -13,10 +13,12 @@
 //   • Pula kluczy round-robin: 429/5xx/błąd sieci → druga (ostatnia) próba
 //     na kolejnym kluczu po krótkim backoffie, potem RateLimitError/GeminiError.
 //     Max 2 próby: na free tier każda kolejna próba to spalony RPM.
+//     401/402/403 (zły klucz / wyczerpany billing) → od razu kolejny klucz z
+//     puli, bez limitu prób — taka odmowa nie zużywa żadnego limitu.
 //   • Klucz w nagłówku `x-goog-api-key`, nie w URL (nie ląduje w logach).
 //   • Zwraca `usage` (prompt/candidates/cached) → telemetria kosztu.
 // ============================================================
-import { nextGeminiKey } from '@/lib/apiKeys';
+import { nextGeminiKey, geminiKeys } from '@/lib/apiKeys';
 import { RateLimitError, GeminiError } from './errors';
 import { safeParseJson } from './extractJson';
 import type { AiPurpose, UsageCollector } from './telemetry';
@@ -95,6 +97,13 @@ function isRetryable(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
+// Błąd PRZYPISANY DO KLUCZA (nieważny klucz, wyczerpany billing/prepaid,
+// brak uprawnień) — taki klucz nic nie zużył, więc próbujemy kolejnego z puli
+// (inny projekt Google). Nie liczy się do limitu prób 429/5xx.
+function isKeyError(status: number): boolean {
+  return status === 401 || status === 402 || status === 403;
+}
+
 // ---- Główna funkcja -----------------------------------------
 
 export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult> {
@@ -125,14 +134,13 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
 
   const firstKey = nextGeminiKey();
   if (!firstKey) throw new GeminiError('GEMINI_API_KEY not set');
+  const poolSize = geminiKeys().length;
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    // Druga próba: kolejny klucz z puli (a gdy pula ma 1 klucz — ten sam).
-    const key = attempt === 0 ? firstKey : (nextGeminiKey() ?? firstKey);
-    if (attempt > 0) {
-      retried = true;
-      await sleep(BACKOFF_MS);
-    }
+  let key = firstKey;
+  let transientAttempts = 0; // 429/5xx/sieć — max MAX_ATTEMPTS
+  const deadKeys = new Set<string>(); // klucze z błędem 401/402/403 w tym żądaniu
+
+  for (;;) {
     try {
       res = await fetch(`${API_BASE}/${opts.model}:generateContent`, {
         method: 'POST',
@@ -141,11 +149,27 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
         cache: 'no-store',
       });
       lastNetworkError = null;
-      if (!isRetryable(res.status)) break;
     } catch (err) {
       lastNetworkError = err;
       res = null;
     }
+
+    if (res && isKeyError(res.status)) {
+      deadKeys.add(key);
+      if (deadKeys.size >= poolSize) break; // cała pula martwa
+      console.warn(`[gemini:${opts.purpose}] key error HTTP ${res.status} — trying next key`);
+    } else {
+      transientAttempts++;
+      const transient = !res || isRetryable(res.status);
+      if (!transient || transientAttempts >= MAX_ATTEMPTS) break;
+      await sleep(BACKOFF_MS);
+    }
+
+    // Kolejny klucz z puli, pomijając martwe (pula 1-elementowa → ten sam).
+    retried = true;
+    let next = nextGeminiKey() ?? key;
+    for (let i = 0; i < poolSize && deadKeys.has(next); i++) next = nextGeminiKey() ?? next;
+    key = next;
   }
 
   const record = (usage: GeminiUsage, ok: boolean) => {

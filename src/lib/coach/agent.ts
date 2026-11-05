@@ -63,7 +63,7 @@ const SLOT_QUESTIONS_FOR_MODEL: Record<RequiredSlot, string> = {
   interests: 'sectors or themes the user is interested in (short labels)',
 };
 
-async function extractSlotWithModel(
+export async function extractSlotWithModel(
   slot: RequiredSlot,
   answer: string,
   collector: UsageCollector,

@@ -199,7 +199,9 @@ async function runTurn(
       const msg =
         res.status === 429
           ? (serverMsg ?? 'Coach is rate limited — try again in a moment.')
-          : `Coach error (${res.status})`;
+          : res.status === 503 && serverMsg
+            ? serverMsg
+            : `Coach error (${res.status})`;
       set({ status: 'error', errorMessage: msg });
       return;
     }

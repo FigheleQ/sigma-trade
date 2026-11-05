@@ -307,9 +307,12 @@ export function catalogForPrompt(
     });
     if (!progressed) break;
   }
-  return [...picked.entries()]
-    .map(([label, list]) => `- ${label}: ${list.map((en) => `${en.ticker} (${en.name}, ${en.risk})`).join('; ')}`)
+  // Same tickery (model je zna) + gwiazdka przy high risk — nazwy kosztowały
+  // ~2× więcej tokenów, a nie poprawiały odpowiedzi.
+  const body = [...picked.entries()]
+    .map(([label, list]) => `- ${label}: ${list.map((en) => `${en.ticker}${en.risk === 'high' ? '*' : ''}`).join(', ')}`)
     .join('\n');
+  return [...picked.values()].flat().some((en) => en.risk === 'high') ? `${body}\n(* = high risk)` : body;
 }
 
 // Pełna, zwięzła lista tickerów (tylko do pomiaru „przed" i debugowania).
