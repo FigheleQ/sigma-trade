@@ -7,9 +7,9 @@
 // `systemInstruction`. Personalizacja = kontekst w promicie (profil,
 // budżet, pozycje), NIE trenowanie modelu.
 // ============================================================
-import { loadConfig } from '@/lib/config';
-import { nextGeminiKey } from '@/lib/apiKeys';
-import { RateLimitError } from '@/lib/news/analyzer';
+import { getGeminiSettings } from '@/lib/config';
+import { callGemini } from '@/lib/ai/gemini';
+import { extractJson } from '@/lib/ai/extractJson';
 import { catalogForPrompt } from './recommendationCatalog';
 import type {
   CoachTurn,
@@ -73,13 +73,7 @@ OUTPUT FORMAT — return ONLY a raw JSON object, no markdown, no code fences:
 }`;
 }
 
-// ---- Helpers (lokalne — symetryczne do analyzer.ts) ----------
-
-function extractJson(raw: string): string {
-  const stripped = raw.trim();
-  const match = stripped.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
-  return match ? match[1].trim() : stripped;
-}
+// ---- Helpers ------------------------------------------------
 
 function coerceStrategy(s: unknown): UserStrategy | null {
   if (!s || typeof s !== 'object') return null;
@@ -94,7 +88,7 @@ function coerceStrategy(s: unknown): UserStrategy | null {
   return { level, risk, budget, interests };
 }
 
-// ---- Gemini multi-turn call ---------------------------------
+// ---- Gemini multi-turn call (wspólny klient src/lib/ai/gemini.ts) ----
 
 async function callGeminiChat(
   systemInstruction: string,
@@ -103,74 +97,15 @@ async function callGeminiChat(
   maxTokens: number,
   temperature: number,
 ): Promise<string> {
-  // Round-robin klucz; na 429 jeden retry na kolejnym kluczu, potem propaguj.
-  const attempt = async (apiKey: string): Promise<Response> => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: history.map((t) => ({ role: t.role, parts: [{ text: t.content }] })),
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
-          // gemini-2.5-flash to model „thinking" — bez tego tokeny myślenia
-          // potrafią zjeść cały budżet wyjścia (MAX_TOKENS → pusta odpowiedź).
-          // W czacie nie potrzebujemy rozumowania, więc je wyłączamy.
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
-    });
-  };
-
-  const firstKey = nextGeminiKey();
-  if (!firstKey) throw new Error('GEMINI_API_KEY not set');
-
-  let res = await attempt(firstKey);
-  // Retry raz przy 429 LUB przejściowym 5xx (Gemini free tier bywa „overloaded").
-  // Na kolejnym kluczu z puli, a gdy puli brak — na tym samym (zwykła ponowna próba).
-  if (res.status === 429 || res.status >= 500) {
-    const retryKey = nextGeminiKey() ?? firstKey;
-    res = await attempt(retryKey);
-  }
-
-  if (res.status === 429) throw new RateLimitError('Gemini');
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    console.error(`[coach] Gemini HTTP ${res.status}:`, errBody.slice(0, 300));
-    throw new Error(`Gemini HTTP ${res.status}`);
-  }
-
-  // Parsujemy z surowego tekstu — gdy Gemini odda 200 z pustym/niepełnym body
-  // (zdarza się przy MAX_TOKENS / thinking), res.json() rzuca. Łapiemy i logujemy.
-  const bodyText = await res.text();
-  let data: {
-    candidates?: Array<{
-      content?: { parts?: Array<{ text?: string }> };
-      finishReason?: string;
-    }>;
-    promptFeedback?: { blockReason?: string };
-  };
-  try {
-    data = JSON.parse(bodyText);
-  } catch {
-    console.error('[coach] Gemini 200 z nie-JSON body:', bodyText.slice(0, 500));
-    return '';
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-  if (!text) {
-    console.error(
-      '[coach] Gemini bez tekstu — finishReason:',
-      data.candidates?.[0]?.finishReason,
-      '| block:',
-      data.promptFeedback?.blockReason,
-      '| raw:',
-      bodyText.slice(0, 500),
-    );
-  }
-  return text;
+  const result = await callGemini({
+    model,
+    purpose: 'chat',
+    systemInstruction,
+    contents: history.map((t) => ({ role: t.role, parts: [{ text: t.content }] })),
+    maxOutputTokens: maxTokens,
+    temperature,
+  });
+  return result.text;
 }
 
 // ---- Main export --------------------------------------------
@@ -182,14 +117,14 @@ export async function chat(
   history: CoachTurn[],
   userContext: CoachUserContext,
 ): Promise<CoachReply> {
-  const { gemini } = loadConfig().ai_provider;
+  const gemini = getGeminiSettings();
   const systemInstruction = buildSystemInstruction(userContext);
 
   const text = await callGeminiChat(
     systemInstruction,
     history,
-    gemini.model,
-    gemini.max_tokens,
+    gemini.models.chat,
+    gemini.limits.chat_max_output_tokens,
     gemini.temperature,
   );
 

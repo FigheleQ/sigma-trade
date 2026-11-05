@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { loadConfig } from '@/lib/config';
 import { getOrCreatePortfolio } from '@/lib/portfolio/service';
 import { chat } from '@/lib/coach/agent';
-import { RateLimitError } from '@/lib/news/analyzer';
+import { RateLimitError } from '@/lib/ai/errors';
 import type { CoachTurn, CoachMessage, CoachUserContext, UserStrategy } from '@/lib/coach/types';
 
 // Coach wszedł 25.06.2026. Konta założone WCZEŚNIEJ (w tym nasze deweloperskie)

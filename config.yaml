@@ -36,10 +36,27 @@ ai_provider:
   provider: 'gemini' # gemini | claude
 
   gemini:
-    # API key loaded from env: GEMINI_API_KEY
+    # API keys loaded from env: GEMINI_API_KEYS (CSV, round-robin) or GEMINI_API_KEY.
+    # Free tier: limits are per PROJECT and per MODEL — keys from different
+    # projects multiply the quota; light tasks go to Flash-Lite (separate bucket).
+    temperature: 0.3
+    # Legacy single-model fields — used only as fallback when `models` is absent.
     model: 'gemini-2.5-flash'
     max_tokens: 4096
-    temperature: 0.3
+    models:
+      chat: 'gemini-2.5-flash' # conversation / recommendation narration
+      light: 'gemini-2.5-flash-lite' # intent gate, slot extraction, summaries
+      analysis: 'gemini-2.5-flash' # news analyzer
+    limits:
+      chat_max_output_tokens: 512 # replies are 2–5 sentences — 4096 was waste
+      light_max_output_tokens: 32 # one enum / one short field
+      analysis_max_output_tokens: 4096 # news batch (up to 15 articles of JSON)
+      history_turns: 8 # last N turns sent to the model
+      summary_after_turns: 10 # fold older turns into a summary past this point
+      user_rpm: 6 # per-user requests/min to /api/coach (before we burn a key)
+      user_rpd: 150 # per-user requests/day
+      offtopic_max_streak: 3 # consecutive off-topic → template-only until window ends
+      offtopic_window_minutes: 30
 
   claude:
     # API key loaded from env: ANTHROPIC_API_KEY
@@ -113,7 +130,14 @@ features:
     enabled: false
   coach_agent:
     enabled: true # Agent A — Coach/onboarding chatbot (Gemini multi-turn)
+    guardrails: true # local intent gate (0 API calls) + SCOPE block in prompt
+    intent_gate: true # 'ambiguous' messages → one tiny Flash-Lite call (8 tokens out)
+    history_summary: true # fold older turns into a persisted 1–2 sentence summary
+    usage_log: false # also persist token telemetry to `ai_usage_log` (needs 0006)
   strategy_agent:
+    # Layer C — /api/strategy + deterministic portfolio engine. Requires
+    # migration 0005_user_strategy.sql. When false the routes return 404
+    # and the client falls back to the local mock (pre-v2 behaviour).
     enabled: false
 
   # --- Onboarding ---
