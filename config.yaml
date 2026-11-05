@@ -41,12 +41,15 @@ ai_provider:
     # projects multiply the quota; light tasks go to Flash-Lite (separate bucket).
     temperature: 0.3
     # Legacy single-model fields — used only as fallback when `models` is absent.
-    model: 'gemini-2.5-flash'
+    model: 'gemini-3.5-flash'
     max_tokens: 4096
+    # gemini-2.5-flash is no longer available to NEW Google projects (HTTP 404).
+    # 3.7/3.8-flash exist but were overloaded (503) when tested — 3.5 is the stable pick.
+    # Thinking is disabled per model family automatically (src/lib/ai/gemini.ts).
     models:
-      chat: 'gemini-2.5-flash' # conversation / recommendation narration
-      light: 'gemini-2.5-flash-lite' # intent gate, slot extraction, summaries
-      analysis: 'gemini-2.5-flash' # news analyzer
+      chat: 'gemini-3.5-flash' # conversation / recommendation narration
+      light: 'gemini-3.5-flash-lite' # intent gate, slot extraction, summaries
+      analysis: 'gemini-3.5-flash' # news analyzer
     limits:
       chat_max_output_tokens: 512 # replies are 2–5 sentences — 4096 was waste
       light_max_output_tokens: 32 # one enum / one short field
@@ -131,7 +134,7 @@ features:
   coach_agent:
     enabled: true # Agent A — Coach/onboarding chatbot (Gemini multi-turn)
     guardrails: true # local intent gate (0 API calls) + SCOPE block in prompt
-    intent_gate: true # 'ambiguous' messages → one tiny Flash-Lite call (8 tokens out)
+    intent_gate: true # 'ambiguous' messages → one tiny Flash-Lite call (~11 tokens out)
     history_summary: true # fold older turns into a persisted 1–2 sentence summary
     usage_log: false # also persist token telemetry to `ai_usage_log` (needs 0006)
   strategy_agent:

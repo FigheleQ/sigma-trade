@@ -114,10 +114,11 @@ export interface ResolvedGeminiSettings {
 	limits: Required<GeminiLimitsConfig>;
 }
 
-const DEFAULT_CHAT_MODEL = 'gemini-2.5-flash';
+// 2.5-flash nie jest już dostępny dla nowych projektów Google (HTTP 404) → 3.5.
+const DEFAULT_CHAT_MODEL = 'gemini-3.5-flash';
 // Flash-Lite: tańszy i z WYŻSZYM darmowym limitem (osobna pula per model) —
 // idealny do klasyfikacji / ekstrakcji / streszczeń, gdzie jakość prozy nie gra roli.
-const DEFAULT_LIGHT_MODEL = 'gemini-2.5-flash-lite';
+const DEFAULT_LIGHT_MODEL = 'gemini-3.5-flash-lite';
 
 export function getGeminiSettings(): ResolvedGeminiSettings {
 	const g = loadConfig().ai_provider.gemini;

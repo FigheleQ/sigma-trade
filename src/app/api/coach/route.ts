@@ -9,7 +9,7 @@
 //   1. limit per user (RPM w pamięci, RPD w DB)       → 429, 0 wywołań Gemini
 //   2. budżet nadużyć (seria off-topic → blokada)     → szablon, 0 wywołań
 //   3. lokalny gate guard.ts (heurystyki)             → szablon, 0 wywołań
-//   4. `ambiguous` → mikro-gate `light` (8 tokenów)   → szablon albo dalej
+//   4. `ambiguous` → mikro-gate `light` (~11 tokenów)→ szablon albo dalej
 //   5. tura czatu (agent.ts) — dopiero tu pełny prompt
 //
 // Multi-user: wszystko filtrowane przez RLS (auth.uid()).

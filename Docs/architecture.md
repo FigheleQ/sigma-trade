@@ -15,7 +15,7 @@ news z analizą AI. Logowanie + dane w Supabase (Postgres).
 | Auth + DB | Supabase (Auth + Postgres + RLS) |
 | Wykres | Lightweight Charts v5 (TradingView) |
 | Dane | Finnhub (quote, news), TwelveData (świece) |
-| AI | Gemini przez jeden klient `src/lib/ai/gemini.ts` (tiery: chat = 2.5 Flash, light = 2.5 Flash-Lite, analysis) — Coach + analiza newsów; Claude opcjonalnie dla newsów |
+| AI | Gemini przez jeden klient `src/lib/ai/gemini.ts` (tiery: chat = 3.5 Flash, light = 3.5 Flash-Lite, analysis) — Coach + analiza newsów; Claude opcjonalnie dla newsów |
 | Hosting / CI | Vercel + GitHub Actions; testy e2e: Cypress |
 
 ---

@@ -6,10 +6,11 @@
 //   • Structured output NATYWNIE: `responseMimeType: application/json` +
 //     `responseSchema` (OpenAPI subset). Model nie może dorzucić code-fence'ów
 //     ani prozy → zero retry przez zły JSON. `extractJson` zostaje fallbackiem.
-//   • `thinkingConfig.thinkingBudget: 0` DOMYŚLNIE — 2.5 Flash to model
-//     „thinking"; bez tego tokeny myślenia zjadają budżet wyjścia
-//     (finishReason MAX_TOKENS → pusta odpowiedź). Nasze zadania nie
-//     wymagają rozumowania, a wyłączenie myślenia też tnie koszt.
+//   • Myślenie WYŁĄCZONE domyślnie — modele Flash to modele „thinking";
+//     bez tego tokeny myślenia zjadają budżet wyjścia (finishReason
+//     MAX_TOKENS → pusta odpowiedź). 2.5 → `thinkingBudget: 0`, 3.x →
+//     `thinkingLevel: 'minimal'` (patrz `thinkingLadder` — parametr zależy
+//     od modelu, a zły wariant daje HTTP 400).
 //   • Pula kluczy round-robin: 429/5xx/błąd sieci → druga (ostatnia) próba
 //     na kolejnym kluczu po krótkim backoffie, potem RateLimitError/GeminiError.
 //     Max 2 próby: na free tier każda kolejna próba to spalony RPM.
@@ -84,6 +85,7 @@ interface GeminiApiResponse {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
     cachedContentTokenCount?: number;
+    thoughtsTokenCount?: number;
   };
 }
 
@@ -104,6 +106,26 @@ function isKeyError(status: number): boolean {
   return status === 401 || status === 402 || status === 403;
 }
 
+// ---- Konfiguracja myślenia per rodzina modeli ---------------
+//
+// Pomiar na żywym API (2026-11), prompt + responseSchema, maxOutputTokens 128:
+//   gemini-2.5-* / 3.5-flash  thinkingBudget:0      → OK, 0 tokenów myślenia
+//   gemini-3.5-flash          BEZ thinkingConfig    → MAX_TOKENS, 118 tokenów myślenia, pusta odp.
+//   gemini-3.5-flash-lite     thinkingBudget:0      → HTTP 400 (invalid argument)
+//   gemini-3.5-flash(-lite)   thinkingLevel:minimal → OK, 0 tokenów myślenia
+//   gemini-3.7/3.8-flash      thinkingLevel:minimal → HTTP 400 (nieobsługiwany) → 'low'
+// Dlatego: drabina wariantów od „najtańszego"; HTTP 400 → kolejny wariant
+// (400 to walidacja żądania — nie zużywa limitu), działający wariant
+// zapamiętujemy per model w pamięci procesu.
+type ThinkingConfig = { thinkingBudget: number } | { thinkingLevel: 'minimal' | 'low' };
+
+function thinkingLadder(model: string, budget: number): ThinkingConfig[] {
+  if (/gemini-2\.5/.test(model)) return [{ thinkingBudget: budget }, { thinkingLevel: 'low' }];
+  return [{ thinkingLevel: 'minimal' }, { thinkingBudget: budget }, { thinkingLevel: 'low' }];
+}
+
+const workingThinking = new Map<string, number>(); // model → indeks w drabinie
+
 // ---- Główna funkcja -----------------------------------------
 
 export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult> {
@@ -112,20 +134,25 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
       ? [{ role: 'user', parts: [{ text: opts.contents }] }]
       : opts.contents;
 
-  const body = JSON.stringify({
-    ...(opts.systemInstruction
-      ? { systemInstruction: { parts: [{ text: opts.systemInstruction }] } }
-      : {}),
-    contents,
-    generationConfig: {
-      temperature: opts.temperature,
-      maxOutputTokens: opts.maxOutputTokens,
-      thinkingConfig: { thinkingBudget: opts.thinkingBudget ?? 0 },
-      ...(opts.responseSchema
-        ? { responseMimeType: 'application/json', responseSchema: opts.responseSchema }
+  const ladder = thinkingLadder(opts.model, opts.thinkingBudget ?? 0);
+  let thinkingIdx = workingThinking.get(opts.model) ?? 0;
+
+  const buildBody = (): string =>
+    JSON.stringify({
+      ...(opts.systemInstruction
+        ? { systemInstruction: { parts: [{ text: opts.systemInstruction }] } }
         : {}),
-    },
-  });
+      contents,
+      generationConfig: {
+        temperature: opts.temperature,
+        maxOutputTokens: opts.maxOutputTokens,
+        thinkingConfig: ladder[thinkingIdx],
+        ...(opts.responseSchema
+          ? { responseMimeType: 'application/json', responseSchema: opts.responseSchema }
+          : {}),
+      },
+    });
+  let body = buildBody();
 
   const started = Date.now();
   let retried = false;
@@ -152,6 +179,18 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
     } catch (err) {
       lastNetworkError = err;
       res = null;
+    }
+
+    // 400 przy wariancie myślenia, którego model nie obsługuje → kolejny wariant,
+    // ten sam klucz, bez zużywania prób.
+    if (res && res.status === 400 && thinkingIdx < ladder.length - 1) {
+      const errText = await res.clone().text().catch(() => '');
+      if (/thinking|invalid argument/i.test(errText)) {
+        thinkingIdx++;
+        body = buildBody();
+        console.warn(`[gemini:${opts.purpose}] ${opts.model}: thinking config rejected, trying ${JSON.stringify(ladder[thinkingIdx])}`);
+        continue;
+      }
     }
 
     if (res && isKeyError(res.status)) {
@@ -214,6 +253,9 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
     return { text: '', json: null, usage: ZERO, retried, finishReason: null, model: opts.model };
   }
 
+  // Żądanie przeszło → zapamiętaj działający wariant myślenia dla modelu.
+  workingThinking.set(opts.model, thinkingIdx);
+
   const usage: GeminiUsage = {
     promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
     outputTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
@@ -222,6 +264,12 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
   const candidate = data.candidates?.[0];
   const text = (candidate?.content?.parts ?? []).map((p) => p.text ?? '').join('');
   const finishReason = candidate?.finishReason ?? null;
+
+  // Wyciek myślenia = tokeny zjadane z budżetu wyjścia (pułapka MAX_TOKENS).
+  const thoughts = data.usageMetadata?.thoughtsTokenCount ?? 0;
+  if (thoughts > 0) {
+    console.warn(`[gemini:${opts.purpose}] ${opts.model} spent ${thoughts} thinking tokens (config ${JSON.stringify(ladder[thinkingIdx])})`);
+  }
 
   if (!text) {
     console.error(

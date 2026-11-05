@@ -20,7 +20,7 @@ POST { message, strategy? }                 (legacy { history } nadal działa)
  1. limit per user  RPM (pamięć) / RPD (DB)   → 429 + własny komunikat   · 0 wywołań
  2. budżet nadużyć  (3× off-topic → blokada)  → szablon                  · 0 wywołań
  3. lokalny gate    guard.ts (heurystyki)     → szablon off_topic/inj.   · 0 wywołań
- 4. ambiguous?      Flash-Lite, 8 tokenów out → szablon albo dalej      · 1 lekkie
+ 4. ambiguous?      Flash-Lite, ~11 tokenów out → szablon albo dalej    · 1 lekkie
  5. sloty           parser lokalny → (Flash-Lite, gdy nie rozpoznał)    · 0–1 lekkie
  6. plan            allocate.ts (gdy profil właśnie domknięty)          · 0 wywołań AI
  7. czat            Flash, prompt v2 + historia z DB (≤ 8 wiadomości)    · 1 wywołanie
@@ -103,8 +103,8 @@ Najpierw część **stabilna** (identyczna dla każdego usera i tury), potem **z
 Format wyjścia wymusza `responseSchema` (`{ reply, offTopic, slotUpdates? }`),
 nie opis w prompcie.
 
-**Cache:** implicit caching Gemini 2.5 Flash startuje od **2048 tokenów**
-prefiksu (dokumentacja Gemini, 2026-11); explicit `cachedContents` nie jest
+**Cache:** implicit caching startuje od **2048 tokenów** prefiksu (dokumentacja
+Gemini, 2026-11 — próg podany dla 2.5 Flash); explicit `cachedContents` nie jest
 dostępny na darmowym tierze. Nasz cały prompt ma ~510–600 tokenów, więc
 `cachedContent` **nie jest używany**. Stabilny prefiks zostaje (darmowy,
 gotowy na płatny tier).
@@ -115,9 +115,24 @@ gotowy na płatny tier).
 
 | Tier | Model | Do czego | max output |
 |---|---|---|---|
-| `chat` | gemini-2.5-flash | rozmowa, narracja planu | 512 |
-| `light` | gemini-2.5-flash-lite | intent gate (8), sloty (32), streszczenia (96) | 32 |
-| `analysis` | gemini-2.5-flash | News Analyzer (batch do 15 artykułów) | 4096 |
+| `chat` | gemini-3.5-flash | rozmowa, narracja planu | 512 |
+| `light` | gemini-3.5-flash-lite | intent gate (32), sloty (32), streszczenia (96) | 32 |
+| `analysis` | gemini-3.5-flash | News Analyzer (batch do 15 artykułów) | 4096 |
+
+Dlaczego 3.5, a nie 2.5 / 3.8 (test na żywym API, 2026-11):
+- `gemini-2.5-flash` → HTTP 404 „no longer available to new users" dla nowych projektów Google.
+- `gemini-3.7/3.8-flash`, `gemini-flash-latest` → 503 „high demand"; 3.8 nie obsługuje
+  `thinkingLevel: minimal` (najniżej `low` — myślenie może jeść budżet wyjścia).
+- `gemini-3.5-flash(-lite)` → stabilne, 0 tokenów myślenia przy `thinkingLevel: minimal`.
+
+Zmiana modelu = jedna linia w configu. **Myślenie** wyłącza klient automatycznie
+per rodzina modelu (`thinkingLadder` w `gemini.ts`): 2.5 → `thinkingBudget: 0`,
+3.x → `thinkingLevel: minimal`; przy HTTP 400 próbuje kolejnego wariantu i
+zapamiętuje działający per model.
+
+**Limit wyjścia to sufit, nie koszt** — płacimy za faktycznie wygenerowane tokeny.
+Za niski sufit jest groźny: JSON z 3.x ma wcięcia (`{"scope":"out"}` ≈ 11 tokenów),
+a przy limicie 8 każda odpowiedź gate'u była ucinana i przepuszczana (fail-open).
 
 Limity darmowego tieru liczą się **per projekt i per model** — Flash-Lite ma
 osobną (wyższą) pulę, więc lekkie zadania nie zjadają limitu czatu.
@@ -125,7 +140,7 @@ Stary kształt `gemini.model / max_tokens` działa jako fallback (`getGeminiSett
 
 ---
 
-## Pomiar tokenów (countTokens, gemini-2.5-flash)
+## Pomiar tokenów (countTokens)
 
 | Scenariusz | Przed (main) | Po (AI v2) | Zmiana |
 |---|---:|---:|---:|
@@ -137,7 +152,8 @@ Stary kształt `gemini.model / max_tokens` działa jako fallback (`getGeminiSett
 | tura: 25. wymiana (50 wiadomości) | 2673 | 856 | −68% |
 | tura: off-topic „ile to 2+2" | 1139 | **0** | −100% |
 
-Wyjście: `maxOutputTokens` 4096 → 512. Telemetria per tura: log `[ai-usage]`
+Na żywym `gemini-3.5-flash` tura onboardingowa zużyła 569 tokenów promptu i 76
+wyjścia — zgodnie z pomiarem. Wyjście: `maxOutputTokens` 4096 → 512. Telemetria per tura: log `[ai-usage]`
 (zawsze) + tabela `ai_usage_log` (flaga `coach_agent.usage_log`).
 
 ---
@@ -203,7 +219,10 @@ Wszystko działa bez 0006 (degradacja do pamięci procesu / logów).
 | POST 500 / pusta odpowiedź | Brak `thinkingBudget: 0` — Flash zjada budżet na myślenie. Klient ustawia 0 domyślnie. |
 | HTTP 402 „prepayment credits are depleted" | Projekt Google bez środków. Klient przeskakuje na kolejny klucz z puli; gdy cała pula martwa → 503. Dodaj klucz z innego projektu do `GEMINI_API_KEYS`. |
 | Klucze z jednego projektu nie zwiększają limitu | Limit free tier jest per projekt — klucze muszą być z różnych projektów. |
-| `cachedContentTokenCount` zawsze 0 | Oczekiwane: prompt < 2048 tokenów (próg implicit cache 2.5 Flash). |
+| `cachedContentTokenCount` zawsze 0 | Oczekiwane: prompt < 2048 tokenów (próg implicit cache). |
+| HTTP 404 „model … no longer available to new users" | Model wycofany dla nowych projektów — zmień `ai_provider.gemini.models` w `config.yaml` (lista: `GET /v1beta/models`). |
+| HTTP 400 „invalid argument" na Flash-Lite 3.x | `thinkingBudget: 0` nieobsługiwany — klient sam przechodzi na `thinkingLevel: minimal`. |
+| Gate przepuszcza wszystko jako `in` | Za niski `maxOutputTokens` ucina JSON → fail-open. W logach: `[intent-gate] unparseable answer`. |
 | Krótka odpowiedź („50k") odcięta jako off-topic | Gate dostaje `awaitingSlot` — sprawdź, czy `coach_threads.slots` się zapisuje (migracja 0006). |
 | Bot pyta drugi raz o ten sam slot | Lokalny parser + Flash-Lite nie rozpoznały wartości — dopisz wzorzec w `slots.ts`. |
 | Narracja z tickerem spoza planu | Odrzucana automatycznie → `deterministicNarration()` (log `narration rejected`). |
