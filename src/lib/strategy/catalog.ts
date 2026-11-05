@@ -243,16 +243,19 @@ export function matchCategories(interests: string[]): CatalogCategory[] {
     .filter((t) => t.length >= 2);
   if (tokens.length === 0) return [];
 
-  // Krótkie słowa kluczowe („ev", „ai") tylko przy dokładnym trafieniu,
-  // dłuższe także przy częściowym („semiconductors" ↔ „semiconductor").
+  // Krótkie słowa („ev", „ai", „car") tylko przy dokładnym trafieniu;
+  // dłuższe także jako PREFIKS („semiconductors" ↔ „semiconductor",
+  // „tech" ↔ „technology"). Nie `includes` — „car" siedzi w „healthcare".
   const hit = (k: string, t: string) =>
-    k.length < 3 || t.length < 3 ? k === t : t.includes(k) || k.includes(t);
-  return RECOMMENDATION_CATALOG.filter(
-    (c) =>
-      c.key !== BROAD_MARKET_KEY &&
-      (c.keywords.some((k) => tokens.some((t) => hit(k, t))) ||
-        tokens.some((t) => t.length >= 3 && c.label.toLowerCase().includes(t))),
-  );
+    k.length < 4 || t.length < 4 ? k === t : t.startsWith(k) || k.startsWith(t);
+  return RECOMMENDATION_CATALOG.filter((c) => {
+    if (c.key === BROAD_MARKET_KEY) return false;
+    const labelWords = c.label.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    return (
+      c.keywords.some((k) => tokens.some((t) => hit(k, t))) ||
+      labelWords.some((w) => tokens.some((t) => hit(w, t)))
+    );
+  });
 }
 
 export function defaultCategories(): CatalogCategory[] {
