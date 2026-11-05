@@ -1,62 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, Loader2, AlertTriangle, Sparkles, RotateCcw, X } from 'lucide-react';
+import { Send, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  useCoachStore,
-  selectCoachMessages,
-  selectCoachStatus,
-  selectCoachRecommendations,
-} from '@/lib/store/coachStore';
+import { useCoachStore, selectCoachMessages, selectCoachStatus } from '@/lib/store/coachStore';
+import RecommendationsBlock from './RecommendationsBlock';
 import type { CoachStatus } from '@/lib/store/coachStore';
 import type { CoachMessage } from '@/lib/coach/types';
-
-// ----------------------------------------------------------------
-// Recommendations — pokazywane po onboardingu
-// ----------------------------------------------------------------
-
-function RecommendationsBlock() {
-  const recommendations = useCoachStore(selectCoachRecommendations);
-  const [dismissed, setDismissed] = useState(false);
-  if (recommendations.length === 0 || dismissed) return null;
-
-  return (
-    <div
-      data-testid="coach-recommendations"
-      className="mx-3 mb-3 rounded border border-accent/30 bg-accent/5 p-3"
-    >
-      <div className="flex items-center gap-1.5 mb-2">
-        <Sparkles size={12} className="text-accent" />
-        <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
-          Recommended for you
-        </span>
-        <button
-          onClick={() => setDismissed(true)}
-          className="ml-auto text-zinc-600 hover:text-zinc-400 transition-colors"
-          aria-label="Dismiss recommendations"
-        >
-          <X size={12} />
-        </button>
-      </div>
-      <ul className="space-y-2">
-        {recommendations.map((r, i) => (
-          <li key={`${r.ticker}-${i}`} className="flex items-start gap-2">
-            <span className="font-mono text-xs font-bold text-accent shrink-0 w-12">
-              {r.ticker}
-            </span>
-            <span className="font-mono text-[11px] text-zinc-400 leading-snug flex-1">
-              {r.reason}
-            </span>
-            <span className="font-mono text-[10px] text-zinc-500 shrink-0">
-              {Math.round(r.suggestedWeight * 100)}%
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 // ----------------------------------------------------------------
 // Message bubble
@@ -66,14 +16,19 @@ function MessageBubble({
   role,
   content,
   showCursor,
+  muted,
 }: {
   role: 'user' | 'model';
   content: string;
   showCursor?: boolean;
+  muted?: boolean; // para off-topic (guardrails) — przygaszona, poza historią modelu
 }) {
   const isUser = role === 'user';
   return (
-    <div className={cn('flex items-end gap-2', isUser ? 'justify-end' : 'justify-start')}>
+    <div
+      data-off-topic={muted ? 'true' : undefined}
+      className={cn('flex items-end gap-2', isUser ? 'justify-end' : 'justify-start', muted && 'opacity-60')}
+    >
       {!isUser && (
         <img
           src="/coach-icon.svg"
@@ -260,6 +215,7 @@ export default function CoachPanel() {
             role={m.role}
             content={getContent(m)}
             showCursor={m.id === typingId && isTyping}
+            muted={m.offTopic}
           />
         ))}
 

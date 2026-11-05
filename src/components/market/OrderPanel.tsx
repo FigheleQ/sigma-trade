@@ -4,7 +4,7 @@
 // Buy/Sell panel — Buy opens a modal with quantity + optional TP/SL.
 // Sell closes all lots for the ticker, or a specific lot when selected.
 // ============================================================
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Minus, Plus, Target, ShieldAlert, X } from 'lucide-react';
 import { useChartStore } from '@/store/chartStore';
 import { usePortfolioStore } from '@/store/portfolioStore';
@@ -21,12 +21,13 @@ interface BuyModalProps {
   price: number;
   cash: number;
   ordering: boolean;
+  initialQty?: number; // prefill z karty rekomendacji Coacha
   onConfirm: (qty: number, tp?: number, sl?: number) => void;
   onClose: () => void;
 }
 
-function BuyModal({ ticker, price, cash, ordering, onConfirm, onClose }: BuyModalProps) {
-  const [qty, setQty] = useState(1);
+function BuyModal({ ticker, price, cash, ordering, initialQty = 1, onConfirm, onClose }: BuyModalProps) {
+  const [qty, setQty] = useState(Math.max(1, Math.floor(initialQty)));
   const [tp, setTp] = useState((price * 1.05).toFixed(2));
   const [sl, setSl] = useState((price * 0.97).toFixed(2));
   const [tpEnabled, setTpEnabled] = useState(false);
@@ -322,9 +323,14 @@ export default function OrderPanel() {
   const selectedLotId = usePortfolioStore((s) => s.selectedLotId);
   const selectLot = usePortfolioStore((s) => s.selectLot);
 
+  const orderPrefill = usePortfolioStore((s) => s.orderPrefill);
+
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
+  const [buyQty, setBuyQty] = useState(1);
   const [snack, setSnack] = useState<SnackbarMessage | null>(null);
+  // Ostatnio skonsumowany prefill — każda instancja panelu (desktop/mobile) liczy osobno.
+  const consumedPrefillId = useRef(0);
 
   const notify = (type: 'ok' | 'err', text: string) =>
     setSnack({ id: Date.now(), type, text });
@@ -337,6 +343,17 @@ export default function OrderPanel() {
     setShowBuyModal(false);
     setShowSellModal(false);
   }, [ticker]);
+
+  // Prefill z Coacha („Place this order"): czekamy aż ticker się przełączy
+  // i dojdzie cena, potem otwieramy BuyModal z sugerowaną liczbą akcji.
+  // Ten efekt jest PO efekcie resetu tickera, więc go nie zamknie.
+  useEffect(() => {
+    if (!orderPrefill || orderPrefill.id <= consumedPrefillId.current) return;
+    if (orderPrefill.ticker !== ticker || quote?.price == null) return;
+    consumedPrefillId.current = orderPrefill.id;
+    setBuyQty(orderPrefill.qty);
+    setShowBuyModal(true);
+  }, [orderPrefill, ticker, quote?.price]);
 
   if (!ticker) return null;
 
@@ -388,6 +405,7 @@ export default function OrderPanel() {
           price={price}
           cash={cash}
           ordering={ordering}
+          initialQty={buyQty}
           onConfirm={handleBuyConfirm}
           onClose={() => setShowBuyModal(false)}
         />
@@ -448,7 +466,10 @@ export default function OrderPanel() {
             <div className="flex items-center gap-2">
               <button
                 data-cy="buy-btn"
-                onClick={() => setShowBuyModal(true)}
+                onClick={() => {
+                  setBuyQty(1);
+                  setShowBuyModal(true);
+                }}
                 disabled={!canBuy}
                 className={cn(
                   'px-4 py-1.5 rounded font-mono text-[11px] font-bold uppercase tracking-wider transition-colors',
