@@ -17,6 +17,7 @@ import { usePortfolioStore } from '@/store/portfolioStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import type { Recommendation, RiskTolerance } from '@/lib/coach/types';
 import { fetchTickerInfo, type TickerInfo } from '@/lib/coach/describeClient';
+import SectorDonut from './SectorDonut';
 
 const RISK_STYLES: Record<RiskTolerance, string> = {
   low: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5',
@@ -230,6 +231,11 @@ export default function RecommendationsBlock() {
   const coreShare = recommendations
     .filter((r) => r.role === 'core')
     .reduce((s, r) => s + r.suggestedWeight, 0);
+  // Baza budżetu (do kwoty gotówki w legendzie): wagi wycenionego planu = kwota / baza.
+  const weightSum = recommendations.reduce((s, r) => s + r.suggestedWeight, 0);
+  const base = invested > 0 && weightSum > 0 ? invested / weightSum : undefined;
+  // Donut tylko dla planu v2 (z kategoriami) — stary kształt zostaje bez wykresu.
+  const showDonut = recommendations.some((r) => r.category);
 
   return (
     <div
@@ -257,6 +263,8 @@ export default function RecommendationsBlock() {
           {coreShare > 0 && <> · core {Math.round(coreShare * 100)}%</>} · paper trading, not advice
         </div>
       )}
+
+      {showDonut && <SectorDonut recommendations={recommendations} base={base} />}
 
       <ul className="space-y-2">
         {recommendations.map((r, i) => (
