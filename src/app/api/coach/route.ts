@@ -220,10 +220,17 @@ export async function POST(req: Request): Promise<NextResponse> {
     return res;
   };
 
-  // 1) Limit per user — zanim spalimy klucz projektu.
-  const minute = checkMinuteLimit(user.id, settings.limits.user_rpm);
-  const rate = minute.ok ? await checkDayLimit(supabase, user.id, settings.limits.user_rpd) : minute;
-  if (!rate.ok) {
+  // 1) Limit per user — sprawdzany LENIWIE, tuż przed pierwszym wywołaniem
+  //    modelu (raz na żądanie). Odpowiedzi z szablonu (powitanie, off-topic,
+  //    blokada) nic nie kosztują, więc nie zjadają limitu — spam off-topic i
+  //    tak hamuje budżet nadużyć.
+  let rateChecked = false;
+  const enforceRate = async (): Promise<NextResponse | null> => {
+    if (rateChecked) return null;
+    rateChecked = true;
+    const minute = checkMinuteLimit(user.id, settings.limits.user_rpm);
+    const rate = minute.ok ? await checkDayLimit(supabase, user.id, settings.limits.user_rpd) : minute;
+    if (rate.ok) return null;
     gate = 'rate_limited';
     const res = finish(
       { reply: '', onboardingComplete: false, strategy: null, error: rateLimitMessage(rate) },
@@ -231,7 +238,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     );
     res.headers.set('Retry-After', String(rate.retryAfterSec ?? 60));
     return res;
-  }
+  };
 
   // Powitanie przy kafelkach — stały tekst, model niepotrzebny.
   if (body.kickoff === true && flags.onboarding_tiles) {
@@ -272,6 +279,8 @@ export async function POST(req: Request): Promise<NextResponse> {
 
       // 4) Ambiguous → jedno mikro-wywołanie `light` (tylko gdy flaga włączona).
       if (!blocked && analysis.intent === 'ambiguous' && flags.intent_gate) {
+        const limited = await enforceRate();
+        if (limited) return limited;
         const scope = await classifyScopeWithModel(message, collector);
         if (scope === 'out') {
           blocked = 'off_topic';
@@ -294,6 +303,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     // 5) Właściwa tura czatu.
+    const limited = await enforceRate();
+    if (limited) return limited;
     const userContext = await buildUserContext(supabase, user.id, knownStrategy);
     const turn = await runCoachTurn({
       supabase,

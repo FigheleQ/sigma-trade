@@ -281,9 +281,12 @@ export function matchCategories(interests: string[]): CatalogCategory[] {
 }
 
 function matchFreeText(interests: string[]): CatalogCategory[] {
+  // + forma bez końcowego „s" („EVs" → „ev", „chips" zostaje też „chip"),
+  // bo krótkie słowa kluczowe dopasowujemy tylko dokładnie.
   const tokens = interests
     .flatMap((i) => i.toLowerCase().split(/[^a-z]+/))
-    .filter((t) => t.length >= 2);
+    .filter((t) => t.length >= 2)
+    .flatMap((t) => (t.length >= 3 && t.endsWith('s') ? [t, t.slice(0, -1)] : [t]));
   if (tokens.length === 0) return [];
 
   // Krótkie słowa („ev", „ai", „car") tylko przy dokładnym trafieniu;

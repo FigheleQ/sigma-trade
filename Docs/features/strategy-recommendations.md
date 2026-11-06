@@ -69,10 +69,26 @@ obecność core) — używany w testach.
 
 ## Katalog — `src/lib/strategy/catalog.ts`
 
-13 kategorii, ~50 tickerów US (działają na darmowym Finnhub). Każdy wpis ma
+13 kategorii, ~56 tickerów US (działają na darmowym Finnhub). Każdy wpis ma
 metadane silnika: `sector`, `assetClass`, `dividendYieldBand`, `volatilityBand`,
-`horizon`, `beginnerFriendly`, `themes`.
-`src/lib/coach/recommendationCatalog.ts` to re-export (stare importy działają).
+`horizon`, `beginnerFriendly`, `themes`. Kategorie mają `shortLabel` (kafelki,
+legenda donutu). `src/lib/coach/recommendationCatalog.ts` to re-export.
+
+**ETF-y tematyczne i spółki o niższym ryzyku** (żeby beginner/medium dostał
+swój motyw, a nie pustkę po filtrze ryzyka): SMH (chipy), BOTZ (AI & robotyka),
+NLR (atom), DUK i SO (spółki energetyczne z dużą flotą jądrową, low risk),
+REMX (metale ziem rzadkich / magnesy, high).
+
+**Dopasowanie zainteresowań** (`matchCategories`), w kolejności:
+1. dokładny klucz kategorii (kafelki i parser zapisują klucze, np. `clean-nuclear`),
+2. dokładna nazwa (stare profile zapisywały etykiety),
+3. wolny tekst → słowa kluczowe (krótkie dokładnie, dłuższe jako prefiks,
+   liczba mnoga zwijana: „EVs" → „ev"); słowa ogólne (energy, power, clean,
+   green, materials) liczą się tylko, gdy nic konkretniejszego nie pasuje.
+
+Błąd naprawiony w ten sposób: profil „AI, atomic power and magnets" dostawał
+XOM i COP, bo etykieta „Nuclear & clean **energy**" trafiała w „**Energy** (oil & gas)".
+Teraz: SMH, NLR, REMX (≤ 5%), BOTZ + core.
 
 `catalogForPrompt(interests, risk, level)` — podzbiór do promptu Coacha
 (broad-market + kategorie usera, max 14 tickerów, `*` = high risk).
@@ -112,7 +128,9 @@ w nagłówku pliku):
 - `UserStrategy`: `horizonYears`, `monthlyContribution`, `drawdownComfort`,
   `preferredInstruments`, `dividendPreference`, `exclusions`.
 
-Mock (`strategyClient.mockRecommendations`) zwraca stary kształt — UI go obsługuje.
+Mock (`strategyClient.mockRecommendations`) to ten sam czysty silnik
+(`allocate.ts` + `explain.ts`), tylko bez cen i konsensusu — wagi, role i
+uzasadnienia zgadzają się z serwerem.
 
 ---
 
@@ -123,13 +141,31 @@ Mock (`strategyClient.mockRecommendations`) zwraca stary kształt — UI go obs�
 | `GET` | `/api/strategy` | `{ strategy }` z `user_strategy` |
 | `POST` | `/api/strategy` | `{ strategy }` → walidacja → upsert |
 | `POST` | `/api/strategy/recommendations` | `{ strategy? }` → `{ recommendations, plan }` |
+| `GET` | `/api/strategy/describe?ticker=X` | krótki opis spółki/ETF-u (poza flagą) |
 
-Flaga `false` → 404 → klient spada na lokalny mock (zachowanie sprzed v2).
+Flaga `false` → 404 → klient spada na lokalny mock (ten sam silnik, bez cen).
 Gdy flaga `true`, `/api/coach` sam liczy plan w turze domknięcia profilu,
 zapisuje profil i zwraca `recommendations` w odpowiedzi — store nie robi
 wtedy drugiego zapytania.
 
 Migracja: `supabase/migrations/0005_user_strategy.sql` (RLS `auth.uid()`).
+Rekomendacje działają bez niej (flaga jest włączona); bez tabeli pomijany jest
+tylko zapis profilu.
+
+
+### Opis spółki — `src/lib/strategy/describe.ts`
+
+Kliknięcie tickera na karcie → 2 zdania „czym się zajmuje i jak zarabia"
+(dla ETF-u: co trzyma i jaką ekspozycję daje).
+
+- Model **Flash-Lite**, temperature 0, sufit 140 tokenów (faktycznie ~45).
+- **Grounding:** model dostaje fakty z katalogu + Finnhub `/stock/profile2`
+  (branża, kraj, giełda) i zakaz liczb, dat, prognoz i porad. Odpowiedź z
+  cyframi lub > 420 znaków jest odrzucana → opis z katalogu.
+- **Cache wspólny:** pamięć procesu + tabela `ticker_profiles` (migracja 0007).
+  Tylko tickery z katalogu → łączny koszt ograniczony z góry (~56 × ~200 tokenów
+  raz na zawsze); klient ma dodatkowy cache (drugie kliknięcie = 0 zapytań).
+- Test na żywym API: INTC, NLR, SMH, REMX, MP — trafne opisy, ~160 / ~45 tokenów.
 
 ---
 
@@ -141,7 +177,20 @@ akcje @ cena, `reason`, rozwijane „Why it fits & risks" (przycisk
 **Place this order** — przełącza wykres na ticker i otwiera `BuyModal`
 z sugerowaną liczbą akcji (na mobile zamyka overlay agenta).
 
+Ticker na karcie to przycisk z opisem spółki (patrz wyżej).
+
+**Donut planu** (`SectorDonut.tsx`): wycinki = motywy (kategorie katalogu),
+nie suchy sektor GICS — „AI & chips" i „Nuclear & clean power" mają osobne
+kolory. Core w ciemniejszym kroku zieleni strony, gotówka w neutralnej szarości.
+Paleta zwalidowana skryptem dataviz na tle `#111111` (pas jasności, chroma,
+CVD, normal-vision, kontrast — PASS); max 5 kolorów satelitów, reszta → „Other";
+2 px przerwy, podświetlenie przy hover/focus, legenda z % i $ (kolor nigdy nie
+jest jedynym nośnikiem informacji).
+
 `data-testid`: `coach-recommendations`, `coach-rec-card`, `coach-rec-role`,
 `coach-rec-risk`, `coach-rec-amount`, `coach-rec-shares`, `coach-rec-toggle`,
 `coach-rec-details`, `coach-rec-risks`, `coach-rec-consensus`,
-`coach-rec-order`, `coach-rec-summary`.
+`coach-rec-order`, `coach-rec-summary`, `coach-rec-about`,
+`coach-rec-description`, `coach-rec-donut`, `coach-donut-slice`,
+`coach-donut-legend`; kafelki: `coach-onboarding-tiles`, `coach-tile-<wartość>`,
+`coach-tiles-next`, `coach-tiles-back`, `coach-tiles-submit`.

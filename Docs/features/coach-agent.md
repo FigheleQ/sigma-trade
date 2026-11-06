@@ -16,17 +16,26 @@ klient Gemini z `responseSchema` i tieringiem modeli, telemetria kosztu.
 Kolejność jest kluczowa — najtańsze odcięcia są pierwsze:
 
 ```
-POST { message, strategy? }                 (legacy { history } nadal działa)
- 1. limit per user  RPM (pamięć) / RPD (DB)   → 429 + własny komunikat   · 0 wywołań
- 2. budżet nadużyć  (3× off-topic → blokada)  → szablon                  · 0 wywołań
- 3. lokalny gate    guard.ts (heurystyki)     → szablon off_topic/inj.   · 0 wywołań
- 4. ambiguous?      Flash-Lite, ~11 tokenów out → szablon albo dalej    · 1 lekkie
- 5. sloty           parser lokalny → (Flash-Lite, gdy nie rozpoznał)    · 0–1 lekkie
- 6. plan            allocate.ts (gdy profil właśnie domknięty)          · 0 wywołań AI
- 7. czat            Flash, prompt v2 + historia z DB (≤ 8 wiadomości)    · 1 wywołanie
+POST { message, strategy?, kickoff?, slots? }   (legacy { history } nadal działa)
+ 0. kickoff + kafelki → powitanie z szablonu                          · 0 wywołań
+ 1. budżet nadużyć  (3× off-topic → blokada)  → szablon                · 0 wywołań
+ 2. lokalny gate    guard.ts (heurystyki)     → szablon off_topic/inj. · 0 wywołań
+    (pomijany dla `slots` z kafelków — tekst wiadomości buduje wtedy serwer)
+ 3. limit per user  RPM (pamięć) / RPD (DB) — LENIWIE, tuż przed pierwszym
+                    wywołaniem modelu; szablony nie zjadają limitu    → 429
+ 4. ambiguous?      Flash-Lite, ~11 tokenów out → szablon albo dalej  · 1 lekkie
+ 5. sloty           kafelki (gotowe) / parser lokalny / Flash-Lite    · 0–1 lekkie
+ 6. plan            allocate.ts (gdy profil właśnie domknięty)        · 0 wywołań AI
+ 7. czat            Flash, prompt v2 + historia z DB (≤ 8 wiadomości)  · 1 wywołanie
  8. walidacja       offTopic z modelu → szablon; tickery narracji ⊂ plan
  9. after()         streszczenie starszych tur (Flash-Lite), telemetria
 ```
+
+**Onboarding na kafelkach (flaga `onboarding_tiles`):** powitanie z szablonu,
+potem kreator w panelu (poziom → zainteresowania multi → ryzyko → budżet).
+Cały onboarding = **1 wywołanie modelu** (podsumowanie gotowego planu) zamiast
+~5 tur czatu. Kategorie kafelków pochodzą z katalogu silnika (`shortLabel`).
+Czat obok dalej działa (ścieżka slotów tekstowych poniżej).
 
 Odpowiedź ma dzisiejszy kształt `CoachReply` (`reply`, `onboardingComplete`,
 `strategy`) plus pola addytywne: `offTopic`, `gate`, `recommendations?`.
@@ -189,6 +198,7 @@ Wszystko działa bez 0006 (degradacja do pamięci procesu / logów).
 | `intent_gate` | `true` | mikro-wywołanie Flash-Lite dla `ambiguous` |
 | `history_summary` | `true` | streszczanie starszych tur |
 | `usage_log` | `false` | zapis telemetrii do `ai_usage_log` |
+| `onboarding_tiles` | `true` | onboarding na kafelkach + powitanie z szablonu |
 
 ---
 
@@ -228,11 +238,20 @@ Wszystko działa bez 0006 (degradacja do pamięci procesu / logów).
 | Narracja z tickerem spoza planu | Odrzucana automatycznie → `deterministicNarration()` (log `narration rejected`). |
 | GET 500 przy pierwszym wejściu | Migracja `0003_coach.sql` nie wgrana. |
 | „car" dopasowywało „healthcare" | Naprawione — `matchCategories` dopasowuje prefiksy, nie podciągi. |
+| „atomic power" → spółki naftowe | Naprawione — zainteresowania zapisujemy jako KLUCZE kategorii; etykieta „Nuclear & clean energy" trafiała słowem „energy" w „Energy (oil & gas)". Ogólne słowa (energy, power, clean) liczą się tylko bez trafień konkretniejszych. |
+| 429 w testach po kilku przebiegach z rzędu | Limit minutowy był sprawdzany dla każdego żądania — teraz tylko przed wywołaniem modelu (szablony go nie zjadają). |
 
 ---
 
 ## Testy
 
 - `cypress/e2e/coach.cy.ts` — 5 testów UI sprzed v2 (stuby `cy.intercept`).
-- `cypress/e2e/coach-v2.cy.ts` — guardrails, sloty, karty rekomendacji, plany per profil.
-- Logika (`guard.ts`, `slots.ts`, `allocate.ts`) testowana deterministycznie przez `cy.task` w Node.
+- `cypress/e2e/coach-v2.cy.ts` — 11 testów:
+  - `cy.task` (Node, deterministycznie): tabela gate'u PL/EN, budżet nadużyć,
+    sloty z tekstu, „atomic power" ≠ ropa + reguła motywu, różne plany per profil, całe akcje;
+  - prawdziwe `/api/coach` (ścieżki przed Gemini): powitanie z szablonu,
+    off-topic / injection / blokada — dowód `x-gemini-calls: 0`;
+  - UI na stubach: kafelki → sloty w body, karta (kwoty, akcje, rola, ryzyko),
+    donut, rozwijanie, opis tickera (drugie otwarcie z cache), „Place this order" → BuyModal.
+- Uruchamianie: `npm run cy:run:win` (albo z odpiętym `ELECTRON_RUN_AS_NODE`).
+  Pełny pakiet: 50/50 zielonych.
