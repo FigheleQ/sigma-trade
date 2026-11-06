@@ -8,7 +8,7 @@
 // widoku sprzed v2 — bez kwot, rozwijania i konsensusu.
 // ============================================================
 import { useId, useState } from 'react';
-import { Sparkles, X, ChevronDown, ShoppingCart } from 'lucide-react';
+import { Sparkles, X, ChevronDown, ShoppingCart, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fmtUSD } from '@/lib/portfolio/format';
 import { fmtShares } from '@/lib/portfolio/shares';
@@ -16,6 +16,7 @@ import { useCoachStore, selectCoachRecommendations } from '@/lib/store/coachStor
 import { usePortfolioStore } from '@/store/portfolioStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import type { Recommendation, RiskTolerance } from '@/lib/coach/types';
+import { fetchTickerInfo, type TickerInfo } from '@/lib/coach/describeClient';
 
 const RISK_STYLES: Record<RiskTolerance, string> = {
   low: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5',
@@ -61,7 +62,25 @@ function ConsensusBar({ buy, hold, sell }: { buy: number; hold: number; sell: nu
 function RecommendationCard({ r }: { r: Recommendation }) {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
+  const aboutId = useId();
   const requestOrderPrefill = usePortfolioStore((s) => s.requestOrderPrefill);
+
+  // Opis spółki po kliknięciu tickera — model `light`, cache wspólny + lokalny.
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [about, setAbout] = useState<TickerInfo | null>(null);
+  const [aboutLoading, setAboutLoading] = useState(false);
+
+  const toggleAbout = () => {
+    const next = !aboutOpen;
+    setAboutOpen(next);
+    if (next && !about && !aboutLoading) {
+      setAboutLoading(true);
+      void fetchTickerInfo(r.ticker).then((info) => {
+        setAbout(info);
+        setAboutLoading(false);
+      });
+    }
+  };
 
   const hasDetails = (r.rationale?.length ?? 0) > 0 || (r.risks?.length ?? 0) > 0 || !!r.analystConsensus;
   const pct = `${Math.round(r.suggestedWeight * 100)}%`;
@@ -81,8 +100,22 @@ function RecommendationCard({ r }: { r: Recommendation }) {
     >
       {/* Nagłówek: ticker, nazwa, rola, ryzyko */}
       <div className="flex items-center gap-2 min-w-0">
-        <span className="font-mono text-xs font-bold text-accent shrink-0">{r.ticker}</span>
-        {r.name && <span className="font-mono text-[10px] text-zinc-400 truncate">{r.name}</span>}
+        <button
+          type="button"
+          data-testid="coach-rec-about"
+          onClick={toggleAbout}
+          aria-expanded={aboutOpen}
+          aria-controls={aboutId}
+          aria-label={`What does ${r.name ?? r.ticker} do?`}
+          title="What does this company do?"
+          className="flex items-center gap-2 min-w-0 text-left group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60 rounded"
+        >
+          <span className="font-mono text-xs font-bold text-accent shrink-0 underline decoration-dotted decoration-accent/40 underline-offset-2 group-hover:decoration-accent">
+            {r.ticker}
+          </span>
+          {r.name && <span className="font-mono text-[10px] text-zinc-400 truncate">{r.name}</span>}
+          <Info size={10} className="text-zinc-600 group-hover:text-accent shrink-0" aria-hidden="true" />
+        </button>
         <span className="ml-auto flex items-center gap-1">
           {r.role && (
             <Badge
@@ -99,6 +132,17 @@ function RecommendationCard({ r }: { r: Recommendation }) {
           )}
         </span>
       </div>
+
+      {aboutOpen && (
+        <p
+          id={aboutId}
+          data-testid="coach-rec-description"
+          aria-live="polite"
+          className="font-mono text-[10px] leading-snug text-zinc-300 bg-bg-base/60 border border-border-subtle rounded px-2 py-1.5"
+        >
+          {aboutLoading ? 'Loading…' : (about?.description ?? r.reason)}
+        </p>
+      )}
 
       {/* Liczby: waga · kwota · akcje @ cena */}
       <div data-testid="coach-rec-amount" className="font-mono text-[11px] text-zinc-300 tabular-nums">
