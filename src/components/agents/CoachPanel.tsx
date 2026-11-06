@@ -5,6 +5,7 @@ import { Send, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCoachStore, selectCoachMessages, selectCoachStatus } from '@/lib/store/coachStore';
 import RecommendationsBlock from './RecommendationsBlock';
+import OnboardingTiles from './OnboardingTiles';
 import type { CoachStatus } from '@/lib/store/coachStore';
 import type { CoachMessage } from '@/lib/coach/types';
 
@@ -139,6 +140,9 @@ export default function CoachPanel() {
   const init = useCoachStore((s) => s.init);
   const sendMessage = useCoachStore((s) => s.sendMessage);
   const resetConversation = useCoachStore((s) => s.resetConversation);
+  const submitOnboarding = useCoachStore((s) => s.submitOnboarding);
+  const tilesEnabled = useCoachStore((s) => s.tilesEnabled);
+  const isOnboarded = useCoachStore((s) => s.isOnboarded);
 
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -154,6 +158,7 @@ export default function CoachPanel() {
   }, [messages, status, isTyping]);
 
   const isBusy = status === 'sending' || status === 'loading';
+  const showTiles = tilesEnabled && !isOnboarded && status !== 'loading' && messages.length > 0;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -218,6 +223,9 @@ export default function CoachPanel() {
             muted={m.offTopic}
           />
         ))}
+
+        {/* Onboarding na kafelkach — do czasu, aż profil będzie kompletny */}
+        {showTiles && <OnboardingTiles onSubmit={(s) => void submitOnboarding(s)} busy={isBusy} />}
 
         {status === 'sending' && (
           <div className="flex items-end gap-2 justify-start">

@@ -119,6 +119,7 @@ export interface CoachTurnInput {
   flags: Required<CoachAgentFlags>;
   collector: UsageCollector;
   legacyHistory: CoachTurn[] | null;
+  structuredSlots?: SlotState; // wybór z kafelków — bez parsera i bez modelu light
 }
 
 export interface CoachTurnResult {
@@ -188,7 +189,10 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnResu
   //    aktualne (model pyta o właściwy, kolejny slot). Najpierw lokalnie
   //    (0 wywołań); model `light` tylko gdy parser nie rozpoznał odpowiedzi
   //    na zadane już pytanie (pierwsza zaczepka nie ma czego ekstrahować).
-  if (onboarding) {
+  if (onboarding && input.structuredSlots) {
+    // Kafelki: wartości są już zwalidowane — 0 parsowania, 0 wywołań.
+    slots = mergeSlots(slots, input.structuredSlots);
+  } else if (onboarding) {
     const awaited = missingBefore[0];
     slots = mergeSlots(slots, parseSlotsLocally(message, awaited));
     if (botHasAsked && missingSlots(slots).includes(awaited)) {

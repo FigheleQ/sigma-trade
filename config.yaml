@@ -137,11 +137,12 @@ features:
     intent_gate: true # 'ambiguous' messages → one tiny Flash-Lite call (~11 tokens out)
     history_summary: true # fold older turns into a persisted 1–2 sentence summary
     usage_log: false # also persist token telemetry to `ai_usage_log` (needs 0006)
+    onboarding_tiles: true # onboarding via tiles: 0 model calls until the plan summary
   strategy_agent:
-    # Layer C — /api/strategy + deterministic portfolio engine. Requires
-    # migration 0005_user_strategy.sql. When false the routes return 404
-    # and the client falls back to the local mock (pre-v2 behaviour).
-    enabled: false
+    # Layer C — /api/strategy + deterministic portfolio engine (live prices,
+    # analyst consensus). Recommendations work without migrations; saving the
+    # profile needs 0005_user_strategy.sql (without it the save is skipped).
+    enabled: true
 
   # --- Onboarding ---
   onboarding:

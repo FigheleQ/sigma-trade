@@ -38,6 +38,7 @@ export interface CoachAgentFlags {
 	intent_gate?: boolean; // mikro-wywołanie `light` dla wiadomości „ambiguous"
 	history_summary?: boolean; // zwijanie starszych tur w streszczenie (`light`)
 	usage_log?: boolean; // zapis telemetrii do tabeli `ai_usage_log`
+	onboarding_tiles?: boolean; // onboarding na kafelkach (0 wywołań modelu do podsumowania)
 }
 
 export interface AppConfig {
@@ -157,6 +158,7 @@ export const getCoachFlags = (): Required<CoachAgentFlags> => {
 		intent_gate: f.intent_gate ?? false,
 		history_summary: f.history_summary ?? false,
 		usage_log: f.usage_log ?? false,
+		onboarding_tiles: f.onboarding_tiles ?? false,
 	};
 };
 

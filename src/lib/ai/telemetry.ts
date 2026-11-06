@@ -13,7 +13,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export type AiPurpose = 'chat' | 'intent_gate' | 'slot_extract' | 'summary' | 'news_analysis';
 
 // Skąd przyszła odpowiedź na turę: model, lokalny szablon (gate) czy limit.
-export type GateOutcome = 'none' | 'local' | 'light' | 'budget' | 'rate_limited';
+// 'template' = odpowiedź z szablonu poza guardrails (powitanie przy kafelkach).
+export type GateOutcome = 'none' | 'local' | 'light' | 'budget' | 'rate_limited' | 'template';
 
 export interface AiUsageEvent {
   purpose: AiPurpose;

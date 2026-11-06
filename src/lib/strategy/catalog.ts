@@ -37,6 +37,7 @@ export interface CatalogEntry {
 export interface CatalogCategory {
   key: string;
   label: string;
+  shortLabel: string; // etykieta kafelka onboardingu / legendy wykresu
   keywords: string[]; // do dopasowania zainteresowań usera (free-text)
   entries: CatalogEntry[];
 }
@@ -81,6 +82,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: BROAD_MARKET_KEY,
     label: 'Broad-market ETFs',
+    shortLabel: 'Broad market',
     keywords: ['etf', 'index', 'diversified', 'dividend', 'passive'],
     entries: [
       e('VOO', 'Vanguard S&P 500 ETF', 'low', 'etf', 'One-ticket exposure to the 500 largest US companies — the classic beginner core.', etf('Broad market', 'low', 'low', ['index', 'core'])),
@@ -92,6 +94,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'technology',
     label: 'Technology',
+    shortLabel: 'Tech & AI software',
     keywords: ['tech', 'technology', 'software', 'cloud', 'computers', 'internet', 'robotics', 'robots', 'artificial', 'intelligence'],
     entries: [
       e('BOTZ', 'Global X Robotics & AI ETF', 'medium', 'etf', 'A basket of robotics and AI companies — theme exposure without betting on one name.', { ...etf('Technology', 'none', 'medium', ['ai', 'robotics', 'theme-etf']), horizon: 'mid' }),
@@ -105,6 +108,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'semiconductors',
     label: 'Semiconductors / AI hardware',
+    shortLabel: 'AI & chips',
     keywords: ['chips', 'semiconductors', 'semiconductor', 'ai', 'hardware', 'gpu', 'nvidia', 'processors'],
     entries: [
       e('SMH', 'VanEck Semiconductor ETF', 'medium', 'etf', 'The biggest chipmakers in one fund — AI-hardware exposure with built-in diversification.', { ...etf('Semiconductors', 'low', 'medium', ['ai', 'chips', 'theme-etf']), horizon: 'mid' }),
@@ -118,6 +122,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'automotive-ev',
     label: 'Automotive & EV',
+    shortLabel: 'Cars & EVs',
     keywords: ['cars', 'car', 'auto', 'automotive', 'ev', 'vehicles', 'mobility'],
     entries: [
       e('TSLA', 'Tesla', 'high', 'stock', 'EV + energy + robotics story — volatile, high-beta.', stock('Automotive', 'none', 'high', 'long', false, ['ev', 'robotics', 'growth'])),
@@ -129,6 +134,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'food-beverage',
     label: 'Food, beverage & restaurants',
+    shortLabel: 'Food & drinks',
     keywords: ['food', 'drinks', 'beverage', 'restaurants', 'consumer', 'snacks', 'coffee'],
     entries: [
       e('KO', 'Coca-Cola', 'low', 'stock', 'Defensive dividend stalwart — sells in any economy.', stock('Consumer staples', 'medium', 'low', 'mid', true, ['defensive', 'dividend'])),
@@ -141,6 +147,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'healthcare',
     label: 'Healthcare & pharma',
+    shortLabel: 'Healthcare',
     keywords: ['health', 'healthcare', 'pharma', 'medicine', 'biotech', 'medical'],
     entries: [
       e('LLY', 'Eli Lilly', 'medium', 'stock', 'Weight-loss & diabetes drug leader — strong growth.', stock('Healthcare', 'low', 'medium', 'mid', false, ['pharma', 'growth'])),
@@ -152,6 +159,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'financials',
     label: 'Banks & payments',
+    shortLabel: 'Banks & payments',
     keywords: ['finance', 'financial', 'banks', 'banking', 'payments', 'fintech'],
     entries: [
       e('JPM', 'JPMorgan Chase', 'medium', 'stock', 'Best-in-class big bank, pays a solid dividend.', stock('Financials', 'medium', 'medium', 'mid', true, ['bank', 'dividend'])),
@@ -163,6 +171,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'energy-traditional',
     label: 'Energy (oil & gas)',
+    shortLabel: 'Oil & gas',
     keywords: ['energy', 'oil', 'gas', 'petroleum', 'fuel'],
     entries: [
       e('XOM', 'ExxonMobil', 'medium', 'stock', 'Oil major with a big, durable dividend.', stock('Energy', 'high', 'medium', 'mid', false, ['oil', 'dividend'])),
@@ -173,6 +182,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'clean-nuclear',
     label: 'Nuclear & clean energy',
+    shortLabel: 'Nuclear & clean power',
     keywords: ['nuclear', 'atom', 'atomic', 'uranium', 'reactor', 'reactors', 'fission', 'smr', 'power', 'clean', 'renewable', 'solar', 'green'],
     entries: [
       // ETF + regulowane spółki energetyczne z dużą flotą jądrową — atom
@@ -189,6 +199,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'materials-rare-earth',
     label: 'Rare-earth & materials',
+    shortLabel: 'Rare earths & magnets',
     keywords: ['rare', 'earth', 'earths', 'magnet', 'magnets', 'neodymium', 'strategic', 'metals', 'materials', 'mining', 'lithium', 'copper', 'minerals'],
     entries: [
       e('REMX', 'VanEck Rare Earth & Strategic Metals ETF', 'high', 'etf', 'Rare-earth and magnet-metal producers in one fund — still volatile, but not a single-company bet.', { ...etf('Materials', 'none', 'high', ['rare-earth', 'magnets', 'commodity', 'theme-etf']), horizon: 'long', beginnerFriendly: false }),
@@ -200,6 +211,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'aerospace-defense',
     label: 'Aerospace & defense',
+    shortLabel: 'Aerospace & defense',
     keywords: ['defense', 'defence', 'aerospace', 'military', 'space', 'weapons'],
     entries: [
       e('LMT', 'Lockheed Martin', 'low', 'stock', 'Defense prime contractor, steady dividend.', stock('Industrials', 'medium', 'low', 'mid', true, ['defense', 'dividend'])),
@@ -210,6 +222,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'retail-ecommerce',
     label: 'Retail & e-commerce',
+    shortLabel: 'Retail & e-commerce',
     keywords: ['retail', 'shopping', 'ecommerce', 'e-commerce', 'stores', 'commerce'],
     entries: [
       e('AMZN', 'Amazon', 'medium', 'stock', 'E-commerce + cloud (AWS) — growth at scale.', stock('Consumer discretionary', 'none', 'medium', 'mid', true, ['ecommerce', 'cloud', 'mega-cap'])),
@@ -220,6 +233,7 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'entertainment-media',
     label: 'Entertainment & media',
+    shortLabel: 'Streaming & media',
     keywords: ['entertainment', 'media', 'streaming', 'movies', 'music', 'games', 'gaming'],
     entries: [
       e('NFLX', 'Netflix', 'medium', 'stock', 'Streaming leader with growing profitability.', stock('Communication services', 'none', 'medium', 'mid', false, ['streaming', 'growth'])),

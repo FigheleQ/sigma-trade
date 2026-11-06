@@ -14,7 +14,7 @@
 //
 // Plik CZYSTY (bez I/O, bez aliasu `@/`) — testowalny przez cy.task.
 // ============================================================
-import { matchCategories } from '../strategy/catalog';
+import { matchCategories, RECOMMENDATION_CATALOG } from '../strategy/catalog';
 import { sanitizeSlots, coerceStrategy } from '../strategy/validate';
 import type { UserStrategy } from './types';
 
@@ -161,6 +161,32 @@ export function parseSlotsLocally(text: string, awaited: RequiredSlot | null): S
 
   return sanitizeSlots(out);
 }
+
+// ---- Kafelki onboardingu ------------------------------------
+
+// Wartość kafelka „Not sure — keep it broad" (brak kategorii → domyślny przekrój).
+export const BROAD_INTEREST = 'diversified';
+
+const interestLabel = (key: string): string =>
+  key === BROAD_INTEREST
+    ? 'a broad, diversified mix'
+    : (RECOMMENDATION_CATALOG.find((c) => c.key === key)?.shortLabel ?? key);
+
+// Zdanie opisujące wybór z kafelków. Budowane z ZWALIDOWANYCH slotów — na
+// serwerze zastępuje tekst od klienta, więc kafelki nie są furtką obok gate'u.
+export function describeSlots(s: SlotState): string {
+  const parts: string[] = [];
+  if (s.level) parts.push(`I'm ${s.level === 'intermediate' || s.level === 'advanced' ? 'an' : 'a'} ${s.level} investor`);
+  if (s.interests?.length) parts.push(`interested in ${s.interests.map(interestLabel).join(', ')}`);
+  if (s.risk) parts.push(`${s.risk} risk`);
+  if (s.budget != null) parts.push(`$${s.budget.toLocaleString('en-US')} budget`);
+  return parts.join(' · ');
+}
+
+// Powitanie przy kafelkach — szablon, 0 wywołań modelu.
+export const TILES_WELCOME =
+  "Hi! I'm Coach, your investing mentor in Sigma Trade — paper trading with virtual money and real prices. " +
+  "Tap a few tiles below and I'll build you a starter plan, or just type a question.";
 
 // Pytanie o slot (używane, gdy model zawiedzie — deterministyczny fallback).
 export const SLOT_PROMPTS: Record<RequiredSlot, string> = {

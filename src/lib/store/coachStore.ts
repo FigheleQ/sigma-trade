@@ -7,6 +7,7 @@ import type {
   UserStrategy,
 } from '@/lib/coach/types';
 import { getRecommendations, saveStrategy } from '@/lib/coach/strategyClient';
+import { describeSlots, type SlotState } from '@/lib/coach/slots';
 
 // ----------------------------------------------------------------
 // Typy stanu
@@ -24,6 +25,7 @@ interface CoachState {
   needsOnboarding: boolean; // świeży/legacy user → bot oprowadza
   isOnboarded: boolean; // onboarding zakończony (profil zebrany)
   strategy: UserStrategy | null; // profil zebrany w onboardingu
+  tilesEnabled: boolean; // onboarding na kafelkach (flaga serwera)
 
   // Rekomendacje (po onboardingu)
   recommendations: Recommendation[];
@@ -33,6 +35,7 @@ interface CoachState {
 interface CoachActions {
   init: () => Promise<void>; // pobierz wątek, wykryj onboarding, ewentualnie powitaj
   sendMessage: (text: string) => Promise<void>;
+  submitOnboarding: (slots: SlotState) => Promise<void>; // wybór z kafelków → plan
   resetConversation: () => Promise<void>; // skasuj pamięć w bazie i zacznij od nowa
   reset: () => void; // tylko stan klienta (np. wylogowanie)
 }
@@ -75,6 +78,7 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
   needsOnboarding: false,
   isOnboarded: false,
   strategy: null,
+  tilesEnabled: false,
   recommendations: [],
   recommendationsSource: null,
 
@@ -88,19 +92,28 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
       const data = (await res.json()) as {
         messages: CoachMessage[];
         needsOnboarding: boolean;
+        profileComplete?: boolean;
+        onboardingTiles?: boolean;
       };
+      const tilesEnabled = data.onboardingTiles === true;
 
       set({
         messages: data.messages,
         needsOnboarding: data.needsOnboarding,
-        isOnboarded: !data.needsOnboarding,
+        // Przy kafelkach o „onboarded" decyduje kompletny profil (sloty), nie
+        // to, że bot już coś powiedział (powitanie to jeszcze nie profil).
+        isOnboarded: tilesEnabled ? data.profileComplete === true : !data.needsOnboarding,
+        tilesEnabled,
         initialized: true,
         status: 'idle',
       });
 
       // Świeży/legacy user z pustym wątkiem → bot wita i zadaje 1. pytanie.
       if (data.needsOnboarding && data.messages.length === 0) {
-        await runTurn(set, get, ONBOARDING_KICKOFF, { persistUserBubble: false });
+        await runTurn(set, get, ONBOARDING_KICKOFF, {
+          persistUserBubble: false,
+          extraBody: tilesEnabled ? { kickoff: true } : undefined,
+        });
       }
     } catch (err) {
       set({
@@ -115,6 +128,17 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
     const trimmed = text.trim();
     if (!trimmed || get().status === 'sending') return;
     await runTurn(set, get, { role: 'user', content: trimmed }, { persistUserBubble: true });
+  },
+
+  submitOnboarding: async (slots) => {
+    if (get().status === 'sending') return;
+    // Bąbel usera = to samo zdanie, które zbuduje serwer (describeSlots).
+    await runTurn(
+      set,
+      get,
+      { role: 'user', content: describeSlots(slots) },
+      { persistUserBubble: true, extraBody: { slots } },
+    );
   },
 
   resetConversation: async () => {
@@ -141,6 +165,7 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
       needsOnboarding: false,
       isOnboarded: false,
       strategy: null,
+      tilesEnabled: false,
       recommendations: [],
       recommendationsSource: null,
     });
@@ -156,6 +181,7 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
       needsOnboarding: false,
       isOnboarded: false,
       strategy: null,
+      tilesEnabled: false,
       recommendations: [],
       recommendationsSource: null,
     }),
@@ -170,7 +196,7 @@ async function runTurn(
   set: (partial: Partial<CoachState>) => void,
   get: () => CoachState & CoachActions,
   userTurn: CoachTurn,
-  opts: { persistUserBubble: boolean },
+  opts: { persistUserBubble: boolean; extraBody?: Record<string, unknown> },
 ): Promise<void> {
   // Bąbel usera w UI (kickoff onboardingu nie pokazujemy).
   const baseMessages = get().messages;
@@ -186,7 +212,7 @@ async function runTurn(
     const res = await fetch('/api/coach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userTurn.content, strategy: get().strategy }),
+      body: JSON.stringify({ message: userTurn.content, strategy: get().strategy, ...opts.extraBody }),
     });
 
     if (!res.ok) {

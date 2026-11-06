@@ -27,7 +27,14 @@ import type { GuardContext } from '@/lib/ai/guard';
 import { classifyScopeWithModel } from '@/lib/ai/intentGate';
 import { createCollector, logTurn, persistTurn, type GateOutcome } from '@/lib/ai/telemetry';
 import { loadThread, saveThread, clearThread } from '@/lib/coach/thread';
-import { awaitingSlot } from '@/lib/coach/slots';
+import {
+  awaitingSlot,
+  describeSlots,
+  effectiveSlots,
+  missingSlots,
+  TILES_WELCOME,
+} from '@/lib/coach/slots';
+import { sanitizeSlots } from '@/lib/strategy/validate';
 import { loadStoredStrategy } from '@/lib/strategy/store';
 import type {
   CoachTurn,
@@ -85,7 +92,20 @@ export async function GET(): Promise<NextResponse> {
   const botHasSpoken = messages.some((m) => m.role === 'model');
   const needsOnboarding = !botHasSpoken || (isLegacyAccount && !botHasSpoken);
 
-  return NextResponse.json({ messages, needsOnboarding, isLegacyAccount });
+  // AI v2: czy profil (sloty) jest kompletny — przy kafelkach to on, a nie
+  // „bot już mówił", decyduje, czy pokazać kreator onboardingu.
+  const flags = getCoachFlags();
+  const thread = await loadThread(supabase, user.id);
+  const known = await loadStoredStrategy(supabase, user.id);
+  const profileComplete = missingSlots(effectiveSlots(thread.slots, known)).length === 0;
+
+  return NextResponse.json({
+    messages,
+    needsOnboarding,
+    isLegacyAccount,
+    profileComplete,
+    onboardingTiles: flags.onboarding_tiles,
+  });
 }
 
 // Kolumna `off_topic` pochodzi z migracji 0006 — bez niej spadamy na stary select.
@@ -133,6 +153,8 @@ interface CoachPostBody {
   message?: string; // AI v2: tylko nowa wiadomość — historię składa serwer
   history?: CoachTurn[]; // legacy: bierzemy z niej WYŁĄCZNIE ostatnią turę usera
   strategy?: UserStrategy | null; // profil znany klientowi (fallback, gdy C nie ma go w DB)
+  kickoff?: boolean; // pierwsze wejście — przy kafelkach powitanie z szablonu (0 wywołań)
+  slots?: unknown; // wybór z kafelków onboardingu (walidowany sanitizeSlots)
 }
 
 // Odpowiedź API = dzisiejszy CoachReply + pola addytywne (ignorowane przez stary klient).
@@ -164,7 +186,17 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const rawMessage = extractUserMessage(body);
+  const flags = getCoachFlags();
+
+  // Kafelki: wartości slotów przychodzą wprost — walidujemy je, a tekst
+  // wiadomości budujemy SAMI z wyniku walidacji (klient nie przemyci nim
+  // dowolnej treści obok gate'u).
+  const structured = flags.onboarding_tiles && body.slots != null ? sanitizeSlots(body.slots) : null;
+  if (structured && Object.keys(structured).length === 0) {
+    return NextResponse.json({ error: 'slots contain no valid values' }, { status: 400 });
+  }
+
+  const rawMessage = structured ? describeSlots(structured) : extractUserMessage(body);
   if (!rawMessage || !rawMessage.trim()) {
     return NextResponse.json(
       { error: 'message must be a non-empty string (or history ending with a user turn)' },
@@ -174,7 +206,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   const message = rawMessage.trim().slice(0, MAX_MESSAGE_CHARS);
 
   const settings = getGeminiSettings();
-  const flags = getCoachFlags();
   const collector = createCollector();
   let gate: GateOutcome = 'none';
   let intentLabel: string | undefined;
@@ -202,12 +233,21 @@ export async function POST(req: Request): Promise<NextResponse> {
     return res;
   }
 
+  // Powitanie przy kafelkach — stały tekst, model niepotrzebny.
+  if (body.kickoff === true && flags.onboarding_tiles) {
+    gate = 'template';
+    intentLabel = 'kickoff';
+    await persistPair(supabase, user.id, message, TILES_WELCOME, false);
+    return finish({ reply: TILES_WELCOME, onboardingComplete: false, strategy: null, gate });
+  }
+
   try {
     const thread = await loadThread(supabase, user.id);
     const knownStrategy = (await loadStoredStrategy(supabase, user.id)) ?? body.strategy ?? null;
     const guardCtx: GuardContext = { awaitingSlot: awaitingSlot(thread.slots, knownStrategy) };
 
-    if (flags.guardrails) {
+    // Wybór z kafelków jest w temacie z definicji — pomijamy gate.
+    if (flags.guardrails && !structured) {
       const now = Date.now();
       const abuseCfg = {
         maxStreak: settings.limits.offtopic_max_streak,
@@ -265,6 +305,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       flags,
       collector,
       legacyHistory: Array.isArray(body.history) ? body.history : null,
+      structuredSlots: structured ?? undefined,
     });
 
     if (turn.offTopic) {
