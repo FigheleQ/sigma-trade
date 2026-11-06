@@ -20,6 +20,10 @@ function rationaleFor(it: PlanItem, s: UserStrategy, plan: PortfolioPlan, consen
     out.push(
       `Core holding: ${pct(plan.limits.coreShare)} of the plan sits in broad ETFs, sized for a ${s.level} investor with ${s.risk} risk.`,
     );
+  } else if (it.themeException) {
+    out.push(
+      `You picked ${it.category.label.toLowerCase()}, and every name there is high risk — so it is capped at ${pct(it.weight)} of the plan.`,
+    );
   } else if (it.interestMatch) {
     out.push(`Matches your interest in ${it.category.label.toLowerCase()}.`);
   } else {

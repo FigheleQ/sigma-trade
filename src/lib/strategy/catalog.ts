@@ -92,8 +92,9 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'technology',
     label: 'Technology',
-    keywords: ['tech', 'technology', 'software', 'cloud', 'computers', 'internet'],
+    keywords: ['tech', 'technology', 'software', 'cloud', 'computers', 'internet', 'robotics', 'robots', 'artificial', 'intelligence'],
     entries: [
+      e('BOTZ', 'Global X Robotics & AI ETF', 'medium', 'etf', 'A basket of robotics and AI companies — theme exposure without betting on one name.', { ...etf('Technology', 'none', 'medium', ['ai', 'robotics', 'theme-etf']), horizon: 'mid' }),
       e('AAPL', 'Apple', 'low', 'stock', 'Cash-rich mega-cap with a huge ecosystem — a stable tech anchor.', stock('Technology', 'low', 'medium', 'mid', true, ['consumer-tech', 'mega-cap'])),
       e('MSFT', 'Microsoft', 'low', 'stock', 'Diversified across cloud, software and AI — low-drama compounder.', stock('Technology', 'low', 'medium', 'mid', true, ['cloud', 'ai', 'mega-cap'])),
       e('GOOGL', 'Alphabet', 'medium', 'stock', 'Search + ads cash machine with AI upside.', stock('Technology', 'low', 'medium', 'mid', true, ['ai', 'ads', 'mega-cap'])),
@@ -104,8 +105,9 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'semiconductors',
     label: 'Semiconductors / AI hardware',
-    keywords: ['chips', 'semiconductors', 'semiconductor', 'ai', 'hardware', 'gpu'],
+    keywords: ['chips', 'semiconductors', 'semiconductor', 'ai', 'hardware', 'gpu', 'nvidia', 'processors'],
     entries: [
+      e('SMH', 'VanEck Semiconductor ETF', 'medium', 'etf', 'The biggest chipmakers in one fund — AI-hardware exposure with built-in diversification.', { ...etf('Semiconductors', 'low', 'medium', ['ai', 'chips', 'theme-etf']), horizon: 'mid' }),
       e('NVDA', 'NVIDIA', 'high', 'stock', 'AI-chip leader — high growth, high volatility.', stock('Semiconductors', 'none', 'high', 'long', false, ['ai', 'gpu', 'growth'])),
       e('AMD', 'Advanced Micro Devices', 'high', 'stock', 'NVIDIA challenger in CPUs/GPUs — momentum name.', stock('Semiconductors', 'none', 'high', 'long', false, ['ai', 'gpu', 'growth'])),
       e('AVGO', 'Broadcom', 'medium', 'stock', 'Broad chip + software mix, pays a dividend.', stock('Semiconductors', 'low', 'medium', 'mid', false, ['ai', 'networking', 'dividend'])),
@@ -171,20 +173,26 @@ export const RECOMMENDATION_CATALOG: CatalogCategory[] = [
   {
     key: 'clean-nuclear',
     label: 'Nuclear & clean energy',
-    keywords: ['nuclear', 'atom', 'atomic', 'uranium', 'clean', 'renewable', 'solar', 'green'],
+    keywords: ['nuclear', 'atom', 'atomic', 'uranium', 'reactor', 'reactors', 'fission', 'smr', 'power', 'clean', 'renewable', 'solar', 'green'],
     entries: [
+      // ETF + regulowane spółki energetyczne z dużą flotą jądrową — atom
+      // dostępny także dla beginner/medium (reszta kategorii to high risk).
+      e('NLR', 'VanEck Uranium & Nuclear ETF', 'medium', 'etf', 'Reactor operators, builders and uranium names in one fund — the diversified way into nuclear.', { ...etf('Nuclear energy', 'low', 'medium', ['nuclear', 'uranium', 'theme-etf']), horizon: 'mid' }),
+      e('DUK', 'Duke Energy', 'low', 'stock', 'Regulated utility running one of the largest US nuclear fleets — steady, dividend-paying.', stock('Utilities', 'medium', 'low', 'mid', true, ['nuclear', 'dividend', 'defensive'])),
+      e('SO', 'Southern Company', 'low', 'stock', 'Utility behind Vogtle, the newest US nuclear plant — defensive income with nuclear exposure.', stock('Utilities', 'medium', 'low', 'mid', true, ['nuclear', 'dividend', 'defensive'])),
       e('CEG', 'Constellation Energy', 'high', 'stock', 'Largest US nuclear operator — direct atomic-energy play.', stock('Utilities', 'low', 'high', 'long', false, ['nuclear', 'ai-power'])),
       e('CCJ', 'Cameco', 'high', 'stock', 'Top uranium miner — leveraged to nuclear fuel demand.', stock('Materials', 'none', 'high', 'long', false, ['nuclear', 'uranium', 'commodity'])),
       e('NEE', 'NextEra Energy', 'medium', 'stock', 'Utility + biggest US renewables developer.', stock('Utilities', 'medium', 'medium', 'mid', true, ['renewables', 'dividend'])),
-      e('LEU', 'Centrus Energy', 'high', 'stock', 'Enriched-uranium supplier — small-cap, speculative.', stock('Energy', 'none', 'high', 'long', false, ['nuclear', 'speculative', 'small-cap'])),
+      e('LEU', 'Centrus Energy', 'high', 'stock', 'Enriched-uranium supplier — small-cap, speculative.', stock('Nuclear energy', 'none', 'high', 'long', false, ['nuclear', 'speculative', 'small-cap'])),
     ],
   },
   {
     key: 'materials-rare-earth',
     label: 'Rare-earth & materials',
-    keywords: ['rare', 'earth', 'metals', 'materials', 'mining', 'lithium', 'copper', 'minerals'],
+    keywords: ['rare', 'earth', 'earths', 'magnet', 'magnets', 'neodymium', 'strategic', 'metals', 'materials', 'mining', 'lithium', 'copper', 'minerals'],
     entries: [
-      e('MP', 'MP Materials', 'high', 'stock', 'Only scaled US rare-earth miner — strategic, volatile.', stock('Materials', 'none', 'high', 'long', false, ['rare-earth', 'commodity'])),
+      e('REMX', 'VanEck Rare Earth & Strategic Metals ETF', 'high', 'etf', 'Rare-earth and magnet-metal producers in one fund — still volatile, but not a single-company bet.', { ...etf('Materials', 'none', 'high', ['rare-earth', 'magnets', 'commodity', 'theme-etf']), horizon: 'long', beginnerFriendly: false }),
+      e('MP', 'MP Materials', 'high', 'stock', 'Only scaled US rare-earth miner and magnet maker — strategic, volatile.', stock('Materials', 'none', 'high', 'long', false, ['rare-earth', 'magnets', 'commodity'])),
       e('ALB', 'Albemarle', 'high', 'stock', 'Lithium producer for EV batteries — commodity-cyclical.', stock('Materials', 'low', 'high', 'long', false, ['lithium', 'ev', 'commodity'])),
       e('FCX', 'Freeport-McMoRan', 'high', 'stock', 'Copper & gold miner — leveraged to industrial demand.', stock('Materials', 'low', 'high', 'long', false, ['copper', 'commodity'])),
     ],
@@ -236,8 +244,29 @@ const BY_TICKER = new Map<string, { entry: CatalogEntry; category: CatalogCatego
 export const findEntry = (ticker: string) => BY_TICKER.get(ticker.toUpperCase()) ?? null;
 export const isCatalogTicker = (ticker: string): boolean => BY_TICKER.has(ticker.toUpperCase());
 
-// Dopasowanie zainteresowań (free-text) do kategorii po słowach kluczowych.
+// Dopasowanie zainteresowań do kategorii. Kolejność:
+//   1. dokładny KLUCZ kategorii (kafelki / parser zapisują klucze, np. „clean-nuclear"),
+//   2. dokładna NAZWA kategorii (stare profile zapisywały etykiety),
+//   3. dopiero wolny tekst → słowa kluczowe.
+// Bez 1–2 etykieta „Nuclear & clean ENERGY" trafiała słowem „energy" w
+// kategorię „Energy (oil & gas)" — użytkownik od atomu dostawał ropę.
 export function matchCategories(interests: string[]): CatalogCategory[] {
+  const out = new Map<string, CatalogCategory>();
+  const freeText: string[] = [];
+  for (const raw of interests) {
+    const i = raw.trim().toLowerCase();
+    const exact = RECOMMENDATION_CATALOG.find(
+      (c) => c.key !== BROAD_MARKET_KEY && (c.key === i || c.label.toLowerCase() === i),
+    );
+    if (exact) out.set(exact.key, exact);
+    else freeText.push(i);
+  }
+  for (const c of matchFreeText(freeText)) out.set(c.key, c);
+  // Zachowaj kolejność katalogu (deterministycznie).
+  return RECOMMENDATION_CATALOG.filter((c) => out.has(c.key));
+}
+
+function matchFreeText(interests: string[]): CatalogCategory[] {
   const tokens = interests
     .flatMap((i) => i.toLowerCase().split(/[^a-z]+/))
     .filter((t) => t.length >= 2);
@@ -248,15 +277,24 @@ export function matchCategories(interests: string[]): CatalogCategory[] {
   // „tech" ↔ „technology"). Nie `includes` — „car" siedzi w „healthcare".
   const hit = (k: string, t: string) =>
     k.length < 4 || t.length < 4 ? k === t : t.startsWith(k) || k.startsWith(t);
-  return RECOMMENDATION_CATALOG.filter((c) => {
-    if (c.key === BROAD_MARKET_KEY) return false;
-    const labelWords = c.label.toLowerCase().split(/[^a-z]+/).filter(Boolean);
-    return (
-      c.keywords.some((k) => tokens.some((t) => hit(k, t))) ||
-      labelWords.some((w) => tokens.some((t) => hit(w, t)))
-    );
-  });
+  const matchWith = (toks: string[]) =>
+    RECOMMENDATION_CATALOG.filter((c) => {
+      if (c.key === BROAD_MARKET_KEY) return false;
+      const labelWords = c.label.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 3);
+      return (
+        c.keywords.some((k) => toks.some((t) => hit(k, t))) ||
+        labelWords.some((w) => toks.some((t) => hit(w, t)))
+      );
+    });
+  // Słowa ogólne wspólne kilku kategoriom („nuclear ENERGY", „atomic POWER")
+  // liczą się tylko, gdy nic konkretniejszego nie pasuje — samo „energy" dalej
+  // znaczy energetykę, ale „nuclear energy" to atom, nie ropa.
+  const specific = tokens.filter((t) => !GENERIC_WORDS.has(t));
+  const specificHits = matchWith(specific);
+  return specificHits.length > 0 ? specificHits : matchWith(tokens);
 }
+
+const GENERIC_WORDS = new Set(['energy', 'power', 'clean', 'green', 'materials', 'earth', 'consumer', 'stocks', 'companies', 'sector', 'and', 'the']);
 
 export function defaultCategories(): CatalogCategory[] {
   return RECOMMENDATION_CATALOG.filter((c) => DEFAULT_CATEGORY_KEYS.includes(c.key));

@@ -55,6 +55,7 @@ export interface PlanItem {
   shares?: number; // całe akcje (gdy znana cena)
   price?: number;
   interestMatch: boolean;
+  themeException?: boolean; // high-risk z reguły motywu (≤ 5%)
 }
 
 export interface PortfolioPlan {
@@ -165,7 +166,14 @@ interface Candidate {
   category: CatalogCategory;
   interestMatch: boolean;
   score: number;
+  themeException?: boolean; // high-risk wpuszczony regułą motywu (max 1, ≤ 5%)
 }
+
+// Reguła motywu: user WPROST wybrał motyw, a filtr ryzyka wyciął z niego
+// wszystko (np. magnesy → tylko MP/REMX, oba high). Dla profilu medium
+// wpuszczamy wtedy max 1 taką pozycję, z wagą ≤ 5% i oznaczeniem ryzyka —
+// lepsze niż cicho zignorować zainteresowanie usera.
+export const THEME_EXCEPTION_MAX_WEIGHT = 0.05;
 
 function satelliteCandidates(s: UserStrategy, skip: Set<string>): Candidate[] {
   const allowed = allowedRisks(s.level, s.risk);
@@ -177,9 +185,9 @@ function satelliteCandidates(s: UserStrategy, skip: Set<string>): Candidate[] {
   const stocksAllowed = !(s.preferredInstruments?.length === 1 && s.preferredInstruments[0] === 'etf');
   const shortHorizon = s.horizonYears != null && s.horizonYears < 3;
 
-  const perCat: Candidate[][] = cats.map((c) =>
+  const eligible = (c: CatalogCategory, riskOk: (e: CatalogEntry) => boolean): Candidate[] =>
     c.entries
-      .filter((e) => allowed.has(e.risk) && !skip.has(e.ticker))
+      .filter((e) => riskOk(e) && !skip.has(e.ticker))
       .filter((e) => stocksAllowed || e.kind === 'etf')
       // Beginner + niskie ryzyko → tylko pozycje „beginnerFriendly".
       .filter((e) => !(s.level === 'beginner' && s.risk === 'low') || e.beginnerFriendly)
@@ -189,8 +197,22 @@ function satelliteCandidates(s: UserStrategy, skip: Set<string>): Candidate[] {
       .map((e) => ({ entry: e, category: c, interestMatch: matchedKeys.has(c.key), score: scoreEntry(e, s, matchedKeys.has(c.key)) }))
       // Tie-break deterministyczny: score malejąco, potem kuratorowana
       // kolejność katalogu (liderzy kategorii są pierwsi, np. NVDA przed INTC).
-      .sort((a, b) => b.score - a.score || catalogRank(a.entry) - catalogRank(b.entry)),
-  );
+      .sort((a, b) => b.score - a.score || catalogRank(a.entry) - catalogRank(b.entry));
+
+  const perCat: Candidate[][] = cats.map((c) => eligible(c, (e) => allowed.has(e.risk)));
+
+  // Reguła motywu (patrz THEME_EXCEPTION_MAX_WEIGHT) — tylko risk medium,
+  // tylko kategoria z zainteresowań, która po filtrze ryzyka jest pusta.
+  if (s.risk === 'medium') {
+    const emptyIdx = perCat.findIndex((list, ci) => ci < matched.length && list.length === 0);
+    if (emptyIdx >= 0) {
+      // ETF przed pojedynczą spółką (REMX przed MP) — mniej ryzyka idiosynkratycznego.
+      const best = eligible(cats[emptyIdx], (e) => e.risk === 'high').sort(
+        (a, b) => (a.entry.kind === 'etf' ? 0 : 1) - (b.entry.kind === 'etf' ? 0 : 1),
+      )[0];
+      if (best) perCat[emptyIdx] = [{ ...best, themeException: true }];
+    }
+  }
 
   // Round-robin po kategoriach → różnorodność zamiast 4× tech.
   // Osobno dla kategorii z zainteresowań i dla domyślnych (dywersyfikatorów).
@@ -231,9 +253,10 @@ function pickSatellites(cands: Candidate[], count: number): Candidate[] {
     perSector.set(c.entry.sector, n + 1);
     if (c.interestMatch) interestPicked++;
   }
-  // Gdy limity zostawiły luki — dobierz resztę bez limitu sektorów.
+  // Gdy zabrakło dywersyfikatorów — dobierz z zainteresowań ponad 2/3 (limit sektorów zostaje).
   for (const c of cands) {
     if (picked.length >= count) break;
+    if (picked.includes(c)) continue;
     const n = perSector.get(c.entry.sector) ?? 0;
     if (n >= 2) continue;
     picked.push(c);
@@ -260,7 +283,7 @@ function rawWeight(c: Candidate, s: UserStrategy): number {
 // Rozkłada `total` na satelity z limitem per ticker i per sektor.
 // Nadwyżka, której nie da się ulokować, wraca jako `overflow` (trafia do core).
 export function capWeights(
-  items: Array<{ key: string; sector: string; raw: number }>,
+  items: Array<{ key: string; sector: string; raw: number; cap?: number }>,
   total: number,
   maxTicker: number,
   maxSector: number,
@@ -278,9 +301,10 @@ export function capWeights(
     remaining = 0;
 
     for (const i of open) {
-      if (weights[i.key] > maxTicker) {
-        remaining += weights[i.key] - maxTicker;
-        weights[i.key] = maxTicker;
+      const cap = Math.min(maxTicker, i.cap ?? maxTicker);
+      if (weights[i.key] > cap) {
+        remaining += weights[i.key] - cap;
+        weights[i.key] = cap;
         capped.add(i.key);
       }
     }
@@ -344,7 +368,12 @@ function allocateOnce(
   // Bez satelitów (np. tylko ETF) całość idzie do core.
   const satShare = sats.length > 0 ? Math.max(0, investable - limits.coreShare) : 0;
   const { weights: satW, overflow } = capWeights(
-    sats.map((c) => ({ key: c.entry.ticker, sector: c.entry.sector, raw: rawWeight(c, s) })),
+    sats.map((c) => ({
+      key: c.entry.ticker,
+      sector: c.entry.sector,
+      raw: rawWeight(c, s),
+      ...(c.themeException ? { cap: THEME_EXCEPTION_MAX_WEIGHT } : {}),
+    })),
     satShare,
     limits.maxTickerWeight,
     limits.maxSectorWeight,
@@ -371,6 +400,7 @@ function allocateOnce(
       weight: satW[c.entry.ticker] ?? 0,
       amount: 0,
       interestMatch: c.interestMatch,
+      ...(c.themeException ? { themeException: true } : {}),
     })),
   ];
 

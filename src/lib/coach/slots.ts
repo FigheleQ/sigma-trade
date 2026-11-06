@@ -120,9 +120,11 @@ function parseBudget(t: string, awaited: boolean): number | null {
 
 const UNSURE_INTERESTS = /\b(not sure|no idea|don'?t know|dont know|anything|whatever|no preference|everything|nie wiem|obojetnie|wszystko)\b/;
 
+// Zwraca KLUCZE kategorii (np. „clean-nuclear"), nie etykiety — etykieta
+// „Nuclear & clean energy" dopasowana ponownie po słowach łapała ropę.
 function parseInterests(t: string, awaited: boolean): string[] | null {
   const cats = matchCategories([t]);
-  if (cats.length > 0) return cats.map((c) => c.label);
+  if (cats.length > 0) return cats.map((c) => c.key);
   if (awaited && /\b(etf|etfs|index|indexes|diversified|passive)\b/.test(t)) return ['Diversified (broad ETFs)'];
   if (awaited && UNSURE_INTERESTS.test(t)) return ['Diversified (broad ETFs)'];
   return null;
