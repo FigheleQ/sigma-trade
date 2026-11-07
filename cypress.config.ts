@@ -7,6 +7,7 @@ import { analyzeIntent, nextAbuseState, templateReply, type GuardSlot } from './
 import { parseSlotsLocally, mergeSlots, missingSlots, completeStrategy, type SlotState, type RequiredSlot } from './src/lib/coach/slots';
 import { buildPortfolioPlan, checkPlan, planToRecommendations } from './src/lib/strategy/allocate';
 import type { UserStrategy } from './src/lib/coach/types';
+import { acceptFact } from './src/lib/coach/memoryFilter';
 
 // Cypress (Node) — w odróżnieniu od Next — nie wczytuje .env.local samo.
 // Parsujemy go ręcznie (bez dodatkowej zależności) i przekazujemy wybrane
@@ -64,6 +65,10 @@ export default defineConfig({
             return { awaited, missing: missingSlots(slots) };
           });
           return { steps, strategy: completeStrategy(slots) };
+        },
+        // Pamięć: czy fakt przejdzie filtr (injection, długość, parafrazy).
+        'memory:accept'({ facts, existing }: { facts: string[]; existing: string[] }) {
+          return facts.map((fact) => ({ fact, accepted: acceptFact(fact, existing) }));
         },
         // Silnik: plan + kontrola inwariantów.
         'plan:build'({ strategy, positions, prices }: { strategy: UserStrategy; positions: string[]; prices?: Record<string, number> }) {
