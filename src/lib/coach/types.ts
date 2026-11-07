@@ -90,6 +90,29 @@ export interface CoachMessage {
   offTopic?: boolean; // AI v2: para odcięta przez guardrails (pomijana w historii modelu)
 }
 
+// ---- Konwersacje i pamięć Coacha (własność A, migracja 0008) --
+
+// `setup` — jedna, przypięta: onboarding, profil, plan.
+// `chat`  — luźne rozmowy, każda z własnym kontekstem.
+export type CoachConversationKind = 'setup' | 'chat';
+
+export interface CoachConversation {
+  id: string;
+  kind: CoachConversationKind;
+  title: string;
+  updatedAt: string; // ISO
+}
+
+export type CoachMemoryCategory = 'goal' | 'preference' | 'constraint' | 'experience' | 'other';
+
+// Krótki fakt o userze wyciągnięty z rozmów — widoczny i usuwalny przez usera.
+export interface CoachMemoryFact {
+  id: string;
+  fact: string;
+  category: CoachMemoryCategory;
+  createdAt: string; // ISO
+}
+
 // ---- Kontrakt request/response /api/coach (własność A) ------
 
 // Kontekst usera wstrzykiwany do promptu (personalizacja, NIE fine-tuning).

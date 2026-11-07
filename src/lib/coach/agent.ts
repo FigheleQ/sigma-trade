@@ -41,6 +41,7 @@ import {
   summarizeOlder,
 } from './history';
 import { saveSummary, type ThreadState } from './thread';
+import { saveConversationSummary } from './conversations';
 import type { CoachReply, CoachTurn, CoachUserContext, Recommendation } from './types';
 
 // ---- Ekstrakcja slotu modelem `light` -----------------------
@@ -120,6 +121,11 @@ export interface CoachTurnInput {
   collector: UsageCollector;
   legacyHistory: CoachTurn[] | null;
   structuredSlots?: SlotState; // wybór z kafelków — bez parsera i bez modelu light
+  // Konwersacja (0008): `setup` prowadzi onboarding, `chat` to luźna rozmowa
+  // z własnym kontekstem. id = null → stary tryb jednego wątku.
+  mode: 'setup' | 'chat';
+  conversation: { id: string | null; summary: string | null; summarizedUntil: string | null };
+  memory: string[]; // fakty o userze z pamięci (dane, nie instrukcje)
 }
 
 export interface CoachTurnResult {
@@ -175,7 +181,7 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnResu
   const { message, thread, userContext, collector } = input;
 
   // 0) Zapisana historia (serwerowa) — potrzebna też do decyzji o ekstrakcji.
-  const stored = await loadRecentMessages(input.supabase, input.userId);
+  const stored = await loadRecentMessages(input.supabase, input.userId, input.conversation.id);
   const botHasAsked = stored
     ? stored.some((m) => m.role === 'model' && !m.offTopic)
     : (input.legacyHistory ?? []).some((t) => t.role === 'model');
@@ -183,7 +189,9 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnResu
   // 1) Sloty: stan wątku + znany profil (C / klient).
   let slots: SlotState = effectiveSlots(thread.slots, userContext.strategy);
   const missingBefore = missingSlots(slots);
-  const onboarding = missingBefore.length > 0;
+  // Onboarding (sloty, kafelki, plan) dzieje się tylko w przypiętym Setupie;
+  // luźny chat nie wypytuje o profil.
+  const onboarding = input.mode === 'setup' && missingBefore.length > 0;
 
   // 2) Ekstrakcja PRZED wywołaniem czatu — żeby MISSING SLOTS w prompcie było
   //    aktualne (model pyta o właściwy, kolejny slot). Najpierw lokalnie
@@ -210,7 +218,7 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnResu
   let contents: GeminiContent[];
   let olderForSummary: Awaited<ReturnType<typeof loadRecentMessages>> = null;
   if (stored) {
-    const h = buildModelHistory(stored, thread, message, settings.limits.history_turns);
+    const h = buildModelHistory(stored, input.conversation.summarizedUntil, message, settings.limits.history_turns);
     contents = h.contents;
     olderForSummary = h.olderUnsummarized;
   } else {
@@ -220,9 +228,11 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnResu
   const systemInstruction = buildSystemInstruction({
     ctx: userContext,
     slots,
-    missing,
-    summary: input.flags.history_summary ? thread.summary : null,
+    missing: input.mode === 'setup' ? missing : [],
+    profileIncomplete: input.mode === 'chat' && missing.length > 0,
+    summary: input.flags.history_summary ? input.conversation.summary : null,
     plan: planned?.plan ?? null,
+    memory: input.memory,
   });
 
   // 5) Tura czatu. W onboardingu błąd modelu NIE blokuje — pytamy szablonem.
@@ -302,10 +312,15 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnResu
     shouldSummarize(olderForSummary, settings.limits.summary_after_turns, settings.limits.history_turns)
   ) {
     const older = olderForSummary;
-    const previous = thread.summary;
+    const previous = input.conversation.summary;
+    const conversationId = input.conversation.id;
     afterResponse = async () => {
       const summary = await summarizeOlder(previous, older, collector);
-      if (summary) await saveSummary(input.supabase, input.userId, summary, older[older.length - 1].createdAt);
+      if (!summary) return;
+      const until = older[older.length - 1].createdAt;
+      // Streszczenie należy do konwersacji (0008); bez niej — do wątku usera.
+      if (conversationId) await saveConversationSummary(input.supabase, conversationId, summary, until);
+      else await saveSummary(input.supabase, input.userId, summary, until);
     };
   }
 

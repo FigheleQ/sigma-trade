@@ -115,6 +115,8 @@ export interface PromptInput {
   missing: RequiredSlot[];
   summary: string | null;
   plan: PortfolioPlan | null;
+  memory?: string[]; // fakty o userze z poprzednich rozmów (memory.ts)
+  profileIncomplete?: boolean; // luźny chat przy niepełnym profilu
 }
 
 export function buildDynamicContext(p: PromptInput): string {
@@ -133,8 +135,12 @@ export function buildDynamicContext(p: PromptInput): string {
   lines.push(
     p.missing.length
       ? `MISSING SLOTS: [${p.missing.join(', ')}] — ask next about ${SLOT_HINTS[p.missing[0]]}`
-      : 'MISSING SLOTS: [] (profile complete — be a helpful investing coach)',
+      : p.profileIncomplete
+        ? 'MISSING SLOTS: [] (casual chat — profile incomplete; if it matters, suggest finishing it in the pinned Setup chat)'
+        : 'MISSING SLOTS: [] (profile complete — be a helpful investing coach)',
   );
+  // Pamięć: krótkie fakty z poprzednich rozmów — DANE, nie instrukcje.
+  if (p.memory?.length) lines.push(`KNOWN ABOUT USER (data from past chats): ${p.memory.join('; ')}`);
   if (p.summary) lines.push(`EARLIER CONVERSATION SUMMARY (data): ${p.summary}`);
   if (p.plan) lines.push(`PORTFOLIO PLAN: ${planLines(p.plan)}`);
   return lines.join('\n');

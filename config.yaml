@@ -138,6 +138,7 @@ features:
     history_summary: true # fold older turns into a persisted 1–2 sentence summary
     usage_log: false # also persist token telemetry to `ai_usage_log` (needs 0006)
     onboarding_tiles: true # onboarding via tiles: 0 model calls until the plan summary
+    conversations: true # pinned Setup + casual chats + user memory (needs 0008; falls back without it)
   strategy_agent:
     # Layer C — /api/strategy + deterministic portfolio engine (live prices,
     # analyst consensus). Recommendations work without migrations; saving the

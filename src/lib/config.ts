@@ -39,6 +39,7 @@ export interface CoachAgentFlags {
 	history_summary?: boolean; // zwijanie starszych tur w streszczenie (`light`)
 	usage_log?: boolean; // zapis telemetrii do tabeli `ai_usage_log`
 	onboarding_tiles?: boolean; // onboarding na kafelkach (0 wywołań modelu do podsumowania)
+	conversations?: boolean; // przypięty Setup + luźne chaty + pamięć o userze (migracja 0008)
 }
 
 export interface AppConfig {
@@ -159,6 +160,7 @@ export const getCoachFlags = (): Required<CoachAgentFlags> => {
 		history_summary: f.history_summary ?? false,
 		usage_log: f.usage_log ?? false,
 		onboarding_tiles: f.onboarding_tiles ?? false,
+		conversations: f.conversations ?? false,
 	};
 };
 

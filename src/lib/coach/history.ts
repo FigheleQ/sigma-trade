@@ -13,7 +13,6 @@ import { getGeminiSettings } from '@/lib/config';
 import { callGemini, type GeminiContent, type GeminiSchema } from '@/lib/ai/gemini';
 import type { UsageCollector } from '@/lib/ai/telemetry';
 import type { CoachTurn } from './types';
-import type { ThreadState } from './thread';
 
 export interface StoredMessage {
   role: 'user' | 'model';
@@ -25,17 +24,19 @@ export interface StoredMessage {
 // Ile ostatnich wiadomości czytamy z DB — z zapasem na pominięte off-topic.
 const FETCH_LIMIT = 60;
 
+// `conversationId` = null → stary tryb (wszystkie wiadomości usera, bez 0008).
 export async function loadRecentMessages(
   supabase: SupabaseClient,
   userId: string,
+  conversationId: string | null = null,
 ): Promise<StoredMessage[] | null> {
   type Row = { role: string; content: string; created_at: string; off_topic?: boolean | null };
-  const withFlag = await supabase
+  let withFlagQ = supabase
     .from('coach_messages')
     .select('role, content, created_at, off_topic')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(FETCH_LIMIT);
+    .eq('user_id', userId);
+  if (conversationId) withFlagQ = withFlagQ.eq('conversation_id', conversationId);
+  const withFlag = await withFlagQ.order('created_at', { ascending: false }).limit(FETCH_LIMIT);
   let rows: Row[] | null = (withFlag.data as Row[] | null) ?? null;
   if (withFlag.error) {
     // Brak kolumny off_topic (0006 niewgrana) → stary select.
@@ -64,13 +65,14 @@ export interface ModelHistory {
 }
 
 // Buduje `contents` dla Gemini. `messages` = zapisane wiadomości (bez nowej).
+// `summarizedUntil` — do kiedy starsze tury są już w streszczeniu (per konwersacja).
 export function buildModelHistory(
   messages: StoredMessage[],
-  thread: ThreadState,
+  summarizedUntil: string | null,
   newMessage: string,
   historyTurns: number,
 ): ModelHistory {
-  const cutoff = thread.summarizedUntil ? Date.parse(thread.summarizedUntil) : null;
+  const cutoff = summarizedUntil ? Date.parse(summarizedUntil) : null;
   const relevant = messages
     .filter((m) => !m.offTopic)
     .filter((m) => cutoff == null || Date.parse(m.createdAt) > cutoff);

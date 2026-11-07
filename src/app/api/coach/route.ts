@@ -1,9 +1,14 @@
 // ============================================================
 // /api/coach — czat z Coachem (multi-turn).
 //
-//   GET    → historia wątku zalogowanego usera + flaga needsOnboarding
-//   POST   → { message } (lub legacy { history }) → CoachReply
-//   DELETE → reset pamięci (wiadomości + stan wątku)
+//   GET    ?conversation=<id> → historia konwersacji (domyślnie przypięty Setup)
+//   POST   { message, conversationId? } (lub legacy { history }) → CoachReply
+//   DELETE → reset Setupu (wiadomości Setupu + profil + stan wątku);
+//            luźne chaty i pamięć faktów zostają (mają własne endpointy)
+//
+// Konwersacje (migracja 0008, flaga coach_agent.conversations): Setup =
+// onboarding/profil/plan, chaty = luźne rozmowy z własnym kontekstem,
+// pamięć faktów o userze wspólna dla wszystkich. Bez 0008 → jeden wątek.
 //
 // POST (AI v2) — kolejność jest kluczowa dla kosztu na darmowym tierze:
 //   1. limit per user (RPM w pamięci, RPD w DB)       → 429, 0 wywołań Gemini
@@ -29,6 +34,7 @@ import { createCollector, logTurn, persistTurn, type GateOutcome } from '@/lib/a
 import { loadThread, saveThread, clearThread } from '@/lib/coach/thread';
 import {
   awaitingSlot,
+  completeStrategy,
   describeSlots,
   effectiveSlots,
   missingSlots,
@@ -37,6 +43,16 @@ import {
 } from '@/lib/coach/slots';
 import { sanitizeSlots } from '@/lib/strategy/validate';
 import { loadStoredStrategy, clearStoredStrategy } from '@/lib/strategy/store';
+import {
+  conversationsAvailable,
+  getConversation,
+  getOrCreateSetup,
+  resetSetup,
+  toClient,
+  touchConversation,
+  type ConversationRow,
+} from '@/lib/coach/conversations';
+import { loadMemory, memoryForPrompt, maybeExtractMemory, EXTRACT_EVERY } from '@/lib/coach/memory';
 import type {
   CoachTurn,
   CoachMessage,
@@ -65,14 +81,23 @@ interface MessageRow {
 
 // ---- GET: historia wątku + czy potrzebny onboarding ----------
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: Request): Promise<NextResponse> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data, error } = await selectMessages(supabase, 200);
+  // Konwersacja: wskazana w ?conversation=… albo przypięty Setup.
+  const convOn = await conversationsAvailable(supabase);
+  const requested = new URL(req.url).searchParams.get('conversation');
+  let conv: ConversationRow | null = null;
+  if (convOn) {
+    conv = requested ? await getConversation(supabase, requested) : await getOrCreateSetup(supabase, user.id);
+    if (requested && !conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+  }
+
+  const { data, error } = await selectMessages(supabase, 200, conv?.id ?? null);
   if (error) {
     console.error('[api/coach][GET]', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
@@ -91,14 +116,17 @@ export async function GET(): Promise<NextResponse> {
   const createdMs = user.created_at ? Date.parse(user.created_at) : Date.now();
   const isLegacyAccount = Number.isFinite(createdMs) && createdMs < ONBOARDING_CUTOFF_MS;
   const botHasSpoken = messages.some((m) => m.role === 'model');
-  const needsOnboarding = !botHasSpoken || (isLegacyAccount && !botHasSpoken);
+  // Luźny chat nie ma onboardingu ani powitania — zaczyna się pusty.
+  const needsOnboarding =
+    conv?.kind === 'chat' ? false : !botHasSpoken || (isLegacyAccount && !botHasSpoken);
 
   // AI v2: czy profil (sloty) jest kompletny — przy kafelkach to on, a nie
   // „bot już mówił", decyduje, czy pokazać kreator onboardingu.
   const flags = getCoachFlags();
   const thread = await loadThread(supabase, user.id);
   const known = await loadStoredStrategy(supabase, user.id);
-  const profileComplete = missingSlots(effectiveSlots(thread.slots, known)).length === 0;
+  const profile = effectiveSlots(thread.slots, known);
+  const profileComplete = missingSlots(profile).length === 0;
 
   return NextResponse.json({
     messages,
@@ -106,6 +134,11 @@ export async function GET(): Promise<NextResponse> {
     isLegacyAccount,
     profileComplete,
     onboardingTiles: flags.onboarding_tiles,
+    // Profil → klient przelicza plan w Setupie po odświeżeniu (silnik
+    // deterministyczny, 0 tokenów), więc plan nie znika po reloadzie.
+    strategy: profileComplete ? completeStrategy(profile) : null,
+    conversationsEnabled: convOn,
+    conversation: conv ? toClient(conv) : null,
   });
 }
 
@@ -113,12 +146,11 @@ export async function GET(): Promise<NextResponse> {
 async function selectMessages(
   supabase: SupabaseClient,
   limit: number,
+  conversationId: string | null,
 ): Promise<{ data: MessageRow[]; error: unknown }> {
-  const withFlag = await supabase
-    .from('coach_messages')
-    .select('id, role, content, created_at, off_topic')
-    .order('created_at', { ascending: true })
-    .limit(limit);
+  let q = supabase.from('coach_messages').select('id, role, content, created_at, off_topic');
+  if (conversationId) q = q.eq('conversation_id', conversationId);
+  const withFlag = await q.order('created_at', { ascending: true }).limit(limit);
   if (!withFlag.error) return { data: (withFlag.data ?? []) as MessageRow[], error: null };
 
   const legacy = await supabase
@@ -138,11 +170,16 @@ export async function DELETE(): Promise<NextResponse> {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // RLS i tak ogranicza do auth.uid(), ale filtrujemy jawnie dla pewności.
-  const { error } = await supabase.from('coach_messages').delete().eq('user_id', user.id);
-  if (error) {
-    console.error('[api/coach][DELETE]', error);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  if (await conversationsAvailable(supabase)) {
+    // Reset dotyczy tylko Setupu — chaty i pamięć faktów zostają.
+    await resetSetup(supabase, user.id);
+  } else {
+    // RLS i tak ogranicza do auth.uid(), ale filtrujemy jawnie dla pewności.
+    const { error } = await supabase.from('coach_messages').delete().eq('user_id', user.id);
+    if (error) {
+      console.error('[api/coach][DELETE]', error);
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    }
   }
   await clearThread(supabase, user.id);
   await clearStoredStrategy(supabase, user.id);
@@ -157,6 +194,7 @@ interface CoachPostBody {
   strategy?: UserStrategy | null; // profil znany klientowi (fallback, gdy C nie ma go w DB)
   kickoff?: boolean; // pierwsze wejście — przy kafelkach powitanie z szablonu (0 wywołań)
   slots?: unknown; // wybór z kafelków onboardingu (walidowany sanitizeSlots)
+  conversationId?: string; // konwersacja (0008); brak → przypięty Setup
 }
 
 // Odpowiedź API = dzisiejszy CoachReply + pola addytywne (ignorowane przez stary klient).
@@ -190,10 +228,39 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   const flags = getCoachFlags();
 
+  // Konwersacja: wskazana albo Setup. Tryb decyduje o onboardingu.
+  const convOn = await conversationsAvailable(supabase);
+  let conv: ConversationRow | null = null;
+  if (convOn) {
+    conv =
+      typeof body.conversationId === 'string'
+        ? await getConversation(supabase, body.conversationId)
+        : await getOrCreateSetup(supabase, user.id);
+    if (!conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+  }
+  const mode: 'setup' | 'chat' = conv?.kind ?? 'setup';
+
+  // Zapis pary + odświeżenie konwersacji (updated_at, tytuł z 1. wiadomości).
+  const persist = async (userText: string, modelText: string, offTopic: boolean): Promise<void> => {
+    let first = false;
+    if (conv) {
+      const { count } = await supabase
+        .from('coach_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conv.id)
+        .eq('role', 'user');
+      first = (count ?? 0) === 0;
+    }
+    await persistPair(supabase, user.id, userText, modelText, offTopic, conv?.id ?? null);
+    if (conv) await touchConversation(supabase, conv, first && !offTopic ? userText : null);
+  };
+
   // Kafelki: wartości slotów przychodzą wprost — walidujemy je, a tekst
   // wiadomości budujemy SAMI z wyniku walidacji (klient nie przemyci nim
   // dowolnej treści obok gate'u).
-  const structured = flags.onboarding_tiles && body.slots != null ? sanitizeSlots(body.slots) : null;
+  // Kafelki tylko w Setupie.
+  const structured =
+    flags.onboarding_tiles && mode === 'setup' && body.slots != null ? sanitizeSlots(body.slots) : null;
   if (structured && Object.keys(structured).length === 0) {
     return NextResponse.json({ error: 'slots contain no valid values' }, { status: 400 });
   }
@@ -243,7 +310,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   };
 
   // Powitanie przy kafelkach — stały tekst, model niepotrzebny.
-  if (body.kickoff === true && flags.onboarding_tiles) {
+  if (body.kickoff === true && flags.onboarding_tiles && mode === 'setup') {
     gate = 'template';
     intentLabel = 'kickoff';
     // Profil już jest (np. zapisany wcześniej) → kafelki się nie pokażą, więc
@@ -253,14 +320,17 @@ export async function POST(req: Request): Promise<NextResponse> {
     const profile = effectiveSlots(thread.slots, known);
     const welcome =
       missingSlots(profile).length === 0 ? welcomeBack(describeSlots(profile)) : TILES_WELCOME;
-    await persistPair(supabase, user.id, message, welcome, false);
+    await persist(message, welcome, false);
     return finish({ reply: welcome, onboardingComplete: false, strategy: null, gate });
   }
 
   try {
     const thread = await loadThread(supabase, user.id);
     const knownStrategy = (await loadStoredStrategy(supabase, user.id)) ?? body.strategy ?? null;
-    const guardCtx: GuardContext = { awaitingSlot: awaitingSlot(thread.slots, knownStrategy) };
+    // Oczekiwany slot (krótkie odpowiedzi są w temacie) tylko w Setupie.
+    const guardCtx: GuardContext = {
+      awaitingSlot: mode === 'setup' ? awaitingSlot(thread.slots, knownStrategy) : null,
+    };
 
     // Wybór z kafelków jest w temacie z definicji — pomijamy gate.
     if (flags.guardrails && !structured) {
@@ -275,7 +345,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         gate = 'budget';
         intentLabel = 'locked';
         const reply = templateReply('budget', guardCtx);
-        await persistPair(supabase, user.id, message, reply, true);
+        await persist(message, reply, true);
         return finish({ reply, onboardingComplete: false, strategy: null, offTopic: true, gate });
       }
 
@@ -300,7 +370,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       if (blocked) {
         const abuse = nextAbuseState(thread.abuse, true, now, abuseCfg);
         const reply = templateReply(blocked, guardCtx);
-        await persistPair(supabase, user.id, message, reply, true);
+        await persist(message, reply, true);
         await saveThread(supabase, user.id, { ...thread, abuse });
         return finish({ reply, onboardingComplete: false, strategy: null, offTopic: true, gate });
       }
@@ -315,6 +385,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     const limited = await enforceRate();
     if (limited) return limited;
     const userContext = await buildUserContext(supabase, user.id, knownStrategy);
+    const memory = convOn ? memoryForPrompt(await loadMemory(supabase, user.id)) : [];
     const turn = await runCoachTurn({
       supabase,
       userId: user.id,
@@ -326,6 +397,11 @@ export async function POST(req: Request): Promise<NextResponse> {
       collector,
       legacyHistory: Array.isArray(body.history) ? body.history : null,
       structuredSlots: structured ?? undefined,
+      mode,
+      conversation: conv
+        ? { id: conv.id, summary: conv.summary, summarizedUntil: conv.summarized_until }
+        : { id: null, summary: thread.summary, summarizedUntil: thread.summarizedUntil },
+      memory,
     });
 
     if (turn.offTopic) {
@@ -338,9 +414,20 @@ export async function POST(req: Request): Promise<NextResponse> {
       });
     }
 
-    await persistPair(supabase, user.id, message, turn.reply.reply, turn.offTopic);
+    await persist(message, turn.reply.reply, turn.offTopic);
     await saveThread(supabase, user.id, turn.thread);
     if (turn.afterResponse) after(turn.afterResponse);
+    // Pamięć faktów: co EXTRACT_EVERY wiadomości usera w tej konwersacji, w tle.
+    if (conv && !turn.offTopic) {
+      const c = conv;
+      after(async () => {
+        const memCollector = createCollector();
+        const saved = await maybeExtractMemory(supabase, user.id, c, EXTRACT_EVERY, memCollector);
+        if (memCollector.events.length) {
+          logTurn({ route: 'coach-memory', userId: user.id, gate: 'none', intent: `facts:${saved}`, events: memCollector.events });
+        }
+      });
+    }
 
     return finish({ ...turn.reply, offTopic: turn.offTopic, gate });
   } catch (err) {
@@ -378,10 +465,12 @@ async function persistPair(
   userText: string,
   modelText: string,
   offTopic: boolean,
+  conversationId: string | null,
 ): Promise<void> {
+  const conv = conversationId ? { conversation_id: conversationId } : {};
   const rows = [
-    { user_id: userId, role: 'user', content: userText },
-    { user_id: userId, role: 'model', content: modelText },
+    { user_id: userId, role: 'user', content: userText, ...conv },
+    { user_id: userId, role: 'model', content: modelText, ...conv },
   ];
   if (!offTopic) {
     await supabase.from('coach_messages').insert(rows);
