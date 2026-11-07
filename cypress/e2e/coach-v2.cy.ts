@@ -86,6 +86,13 @@ describe('Coach v2 — guardrails (local gate, no API)', () => {
     ['explain stop loss', 'in_scope'],
     ['10% of my $5000 budget', 'in_scope'],
     ['tell me about apple pie recipe', 'ambiguous'],
+    // Rozmowa z Coachem — lokalnie w temacie (regresja: „okay lets go" → odmowa).
+    ['okay lets go', 'in_scope'],
+    ['sure, go ahead', 'in_scope'],
+    ['what can you do?', 'in_scope'],
+    ['who are you', 'in_scope'],
+    ['help', 'in_scope'],
+    ['lets go to the beach and swim today with friends', 'ambiguous'],
   ];
 
   it('klasyfikuje wiadomości PL/EN zgodnie z tabelą', () => {

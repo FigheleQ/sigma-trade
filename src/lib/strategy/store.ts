@@ -48,6 +48,13 @@ export async function loadStoredStrategy(
   });
 }
 
+// Reset Coacha („Reset chat & memory") = start od zera, więc znika też profil
+// (inaczej kafelki onboardingu nie wróciłyby po resecie). Brak tabeli = no-op.
+export async function clearStoredStrategy(supabase: SupabaseClient, userId: string): Promise<void> {
+  const { error } = await supabase.from('user_strategy').delete().eq('user_id', userId);
+  if (error) console.warn('[strategy/store] clear skipped:', error.message);
+}
+
 export async function saveStoredStrategy(
   supabase: SupabaseClient,
   userId: string,

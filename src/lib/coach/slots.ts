@@ -188,6 +188,10 @@ export const TILES_WELCOME =
   "Hi! I'm Coach, your investing mentor in Sigma Trade — paper trading with virtual money and real prices. " +
   "Tap a few tiles below and I'll build you a starter plan, or just type a question.";
 
+// Powitanie, gdy profil jest już kompletny (kafelki się nie pokażą).
+export const welcomeBack = (profile: string): string =>
+  `Welcome back! Your profile: ${profile}. Ask me anything about investing — or hit Reset to rebuild your profile with the tiles.`;
+
 // Pytanie o slot (używane, gdy model zawiedzie — deterministyczny fallback).
 export const SLOT_PROMPTS: Record<RequiredSlot, string> = {
   level: 'Are you a beginner, intermediate or advanced investor?',

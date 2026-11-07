@@ -33,9 +33,10 @@ import {
   effectiveSlots,
   missingSlots,
   TILES_WELCOME,
+  welcomeBack,
 } from '@/lib/coach/slots';
 import { sanitizeSlots } from '@/lib/strategy/validate';
-import { loadStoredStrategy } from '@/lib/strategy/store';
+import { loadStoredStrategy, clearStoredStrategy } from '@/lib/strategy/store';
 import type {
   CoachTurn,
   CoachMessage,
@@ -144,6 +145,7 @@ export async function DELETE(): Promise<NextResponse> {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
   await clearThread(supabase, user.id);
+  await clearStoredStrategy(supabase, user.id);
   return NextResponse.json({ ok: true });
 }
 
@@ -244,8 +246,15 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (body.kickoff === true && flags.onboarding_tiles) {
     gate = 'template';
     intentLabel = 'kickoff';
-    await persistPair(supabase, user.id, message, TILES_WELCOME, false);
-    return finish({ reply: TILES_WELCOME, onboardingComplete: false, strategy: null, gate });
+    // Profil już jest (np. zapisany wcześniej) → kafelki się nie pokażą, więc
+    // powitanie nie może ich obiecywać.
+    const thread = await loadThread(supabase, user.id);
+    const known = await loadStoredStrategy(supabase, user.id);
+    const profile = effectiveSlots(thread.slots, known);
+    const welcome =
+      missingSlots(profile).length === 0 ? welcomeBack(describeSlots(profile)) : TILES_WELCOME;
+    await persistPair(supabase, user.id, message, welcome, false);
+    return finish({ reply: welcome, onboardingComplete: false, strategy: null, gate });
   }
 
   try {

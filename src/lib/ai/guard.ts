@@ -117,6 +117,18 @@ const MATH_WORDS = /\b(calculate|solve|equation|square root|integral|derivative|
 // Pogawędka / potwierdzenia — tanie, w temacie rozmowy, nie wymagają gate'a.
 const SMALL_TALK = /^(hi|hey|hello|yo|hiya|thanks?|thank you|thx|ok(ay)?|cool|great|nice|sure|yes|yeah|yep|no|nope|got it|sounds good|cze(sc)?|hej|dzieki|dziekuje|tak|nie|jasne|super)[\s!.?]*$/;
 
+// Rozmowa o samej rozmowie: start, potwierdzenia, pytania o Coacha / pomoc.
+// Bez tego „okay lets go" było `ambiguous` → Flash-Lite → `out` → odmowa
+// (i zmarnowane wywołanie). Tylko krótkie wiadomości (≤ 6 słów).
+const CONVERSATIONAL = /^((ok(ay)?|alright|sure|yes|yeah|cool|great)[\s,!.]*)?(let'?s|lets)\s+(go|start|begin|do (it|this))\b|^(i'?m\s+)?ready\b|^(go ahead|continue|next|start( over| again)?|begin|help|help me|menu|reset|again)\b|^(what can you do|what do you do|who are you|what are you|how does (this|it) work|how do i (use|start)|what now|what next|where do i start|get me started)\b|^(dawaj|zaczynajmy|zaczynamy|jedziemy|pomoc|pomocy|co potrafisz|kim jestes)\b/;
+// Wiodące potwierdzenie („sure, go ahead", „ok so help") ucinamy przed dopasowaniem.
+const LEADING_ACK = /^((ok(ay)?|alright|sure|yes|yeah|yep|cool|great|so|well|hmm|tak|ok)[\s,!.]+)+/;
+const isConversational = (norm: string): boolean => {
+  if (norm.split(' ').length > 6) return false;
+  const core = norm.replace(/[!?.]+$/, '').replace(LEADING_ACK, '');
+  return CONVERSATIONAL.test(core) || CONVERSATIONAL.test(norm.replace(/[!?.]+$/, ''));
+};
+
 // ---- Tickery z katalogu -------------------------------------
 
 // Pospolite słowa, które przypadkiem są tickerami — nie liczymy ich jako
@@ -191,7 +203,7 @@ export function analyzeIntent(text: string, ctx: GuardContext = {}): IntentAnaly
 
   // 4) Brak sygnałów: odpowiedź na pytanie onboardingu albo small talk → w temacie.
   if (ctx.awaitingSlot) return result('in_scope');
-  if (SMALL_TALK.test(norm)) return result('in_scope');
+  if (SMALL_TALK.test(norm) || isConversational(norm)) return result('in_scope');
 
   return result('ambiguous');
 }
