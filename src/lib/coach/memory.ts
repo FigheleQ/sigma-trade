@@ -19,7 +19,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getGeminiSettings } from '@/lib/config';
 import { callGemini, type GeminiSchema } from '@/lib/ai/gemini';
-import { analyzeIntent } from '@/lib/ai/guard';
+import { acceptFact } from './memoryFilter';
 import type { UsageCollector } from '@/lib/ai/telemetry';
 import { markMemoryExtracted, type ConversationRow } from './conversations';
 import type { CoachMemoryCategory, CoachMemoryFact } from './types';
@@ -31,7 +31,6 @@ const PROMPT_FACTS = 10;
 export const EXTRACT_EVERY = 6;
 // Przy zamykaniu chatu (nowy chat) wystarczą 2 wiadomości.
 export const EXTRACT_ON_CLOSE_MIN = 2;
-const FACT_MAX_CHARS = 120;
 const CATEGORIES: CoachMemoryCategory[] = ['goal', 'preference', 'constraint', 'experience', 'other'];
 
 interface MemoryRow {
@@ -66,23 +65,9 @@ export async function clearMemory(supabase: SupabaseClient, userId: string): Pro
   return !error;
 }
 
-// ---- Walidacja faktu --------------------------------------------
+// ---- Walidacja faktu: memoryFilter.ts (czysty, testowany cy.task) ----
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9$% ]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-// Fakt przechodzi, gdy: rozsądna długość, nie wygląda na instrukcję /
-// injection, nie dubluje istniejącego (także jako podciąg).
-export function acceptFact(fact: string, existing: string[]): boolean {
-  const f = fact.trim();
-  if (f.length < 8 || f.length > FACT_MAX_CHARS) return false;
-  if (analyzeIntent(f).intent === 'injection') return false;
-  if (/\b(ignore|instruction|prompt|system|pretend|you must|always answer|never answer)\b/i.test(f)) return false;
-  const n = norm(f);
-  return !existing.some((e) => {
-    const m = norm(e);
-    return m === n || m.includes(n) || n.includes(m);
-  });
-}
+export { acceptFact };
 
 // ---- Ekstrakcja ---------------------------------------------------
 

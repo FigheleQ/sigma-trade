@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type {
+  CoachConversation,
+  CoachMemoryFact,
   CoachMessage,
   CoachTurn,
   CoachReply,
@@ -14,6 +16,8 @@ import { describeSlots, type SlotState } from '@/lib/coach/slots';
 // ----------------------------------------------------------------
 
 export type CoachStatus = 'idle' | 'loading' | 'sending' | 'error';
+// Widok panelu: rozmowa, lista konwersacji albo pamięć o userze.
+export type CoachPanelView = 'chat' | 'chats' | 'memory';
 
 interface CoachState {
   messages: CoachMessage[];
@@ -27,17 +31,33 @@ interface CoachState {
   strategy: UserStrategy | null; // profil zebrany w onboardingu
   tilesEnabled: boolean; // onboarding na kafelkach (flaga serwera)
 
-  // Rekomendacje (po onboardingu)
+  // Rekomendacje (po onboardingu, tylko w Setupie)
   recommendations: Recommendation[];
   recommendationsSource: 'api' | 'mock' | null;
+
+  // Konwersacje i pamięć (migracja 0008; false → jeden wątek jak wcześniej)
+  conversationsEnabled: boolean;
+  activeConversation: CoachConversation | null; // null = Setup / stary tryb
+  conversations: CoachConversation[];
+  memory: CoachMemoryFact[];
+  view: CoachPanelView;
 }
 
 interface CoachActions {
-  init: () => Promise<void>; // pobierz wątek, wykryj onboarding, ewentualnie powitaj
+  init: () => Promise<void>; // pobierz Setup, wykryj onboarding, ewentualnie powitaj
   sendMessage: (text: string) => Promise<void>;
   submitOnboarding: (slots: SlotState) => Promise<void>; // wybór z kafelków → plan
-  resetConversation: () => Promise<void>; // skasuj pamięć w bazie i zacznij od nowa
+  resetConversation: () => Promise<void>; // reset Setupu (profil + wątek Setupu)
   reset: () => void; // tylko stan klienta (np. wylogowanie)
+
+  setView: (view: CoachPanelView) => void;
+  loadConversations: () => Promise<void>;
+  openConversation: (id: string | null) => Promise<void>; // null = Setup
+  newChat: () => Promise<void>;
+  deleteChat: (id: string) => Promise<void>;
+  loadMemory: () => Promise<void>;
+  forgetFact: (id: string) => Promise<void>;
+  forgetAll: () => Promise<void>;
 }
 
 // ----------------------------------------------------------------
@@ -60,17 +80,23 @@ type CoachApiReply = CoachReply & {
   recommendations?: Recommendation[];
 };
 
+interface ThreadResponse {
+  messages: CoachMessage[];
+  needsOnboarding: boolean;
+  profileComplete?: boolean;
+  onboardingTiles?: boolean;
+  strategy?: UserStrategy | null;
+  conversationsEnabled?: boolean;
+  conversation?: CoachConversation | null;
+}
+
 // Zaczepka pierwszego wejścia — bot przywita i ruszy onboarding.
 const ONBOARDING_KICKOFF: CoachTurn = {
   role: 'user',
   content: 'Hi, I just opened the app. Please introduce yourself and get me started.',
 };
 
-// ----------------------------------------------------------------
-// Store
-// ----------------------------------------------------------------
-
-export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
+const INITIAL: CoachState = {
   messages: [],
   status: 'idle',
   errorMessage: null,
@@ -81,47 +107,23 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
   tilesEnabled: false,
   recommendations: [],
   recommendationsSource: null,
+  conversationsEnabled: false,
+  activeConversation: null,
+  conversations: [],
+  memory: [],
+  view: 'chat',
+};
+
+// ----------------------------------------------------------------
+// Store
+// ----------------------------------------------------------------
+
+export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
+  ...INITIAL,
 
   init: async () => {
     if (get().initialized || get().status === 'loading') return;
-    set({ status: 'loading', errorMessage: null });
-
-    try {
-      const res = await fetch('/api/coach', { method: 'GET' });
-      if (!res.ok) throw new Error(`Failed to load chat (${res.status})`);
-      const data = (await res.json()) as {
-        messages: CoachMessage[];
-        needsOnboarding: boolean;
-        profileComplete?: boolean;
-        onboardingTiles?: boolean;
-      };
-      const tilesEnabled = data.onboardingTiles === true;
-
-      set({
-        messages: data.messages,
-        needsOnboarding: data.needsOnboarding,
-        // Przy kafelkach o „onboarded" decyduje kompletny profil (sloty), nie
-        // to, że bot już coś powiedział (powitanie to jeszcze nie profil).
-        isOnboarded: tilesEnabled ? data.profileComplete === true : !data.needsOnboarding,
-        tilesEnabled,
-        initialized: true,
-        status: 'idle',
-      });
-
-      // Świeży/legacy user z pustym wątkiem → bot wita i zadaje 1. pytanie.
-      if (data.needsOnboarding && data.messages.length === 0) {
-        await runTurn(set, get, ONBOARDING_KICKOFF, {
-          persistUserBubble: false,
-          extraBody: tilesEnabled ? { kickoff: true } : undefined,
-        });
-      }
-    } catch (err) {
-      set({
-        status: 'error',
-        errorMessage: err instanceof Error ? err.message : 'Network error',
-        initialized: true,
-      });
-    }
+    await loadThread(set, get, null, { kickoff: true });
   },
 
   sendMessage: async (text) => {
@@ -156,39 +158,165 @@ export const useCoachStore = create<CoachState & CoachActions>((set, get) => ({
       return;
     }
 
-    // Czyścimy stan i odpalamy onboarding od zera (init wykryje pusty wątek).
+    // Reset dotyczy Setupu: czyścimy jego stan i odpalamy onboarding od zera.
+    // Lista chatów i pamięć zostają (serwer też ich nie rusza).
     set({
-      messages: [],
-      status: 'idle',
-      errorMessage: null,
-      initialized: false,
-      needsOnboarding: false,
-      isOnboarded: false,
-      strategy: null,
-      tilesEnabled: false,
-      recommendations: [],
-      recommendationsSource: null,
+      ...INITIAL,
+      conversations: get().conversations,
+      memory: get().memory,
     });
     await get().init();
   },
 
-  reset: () =>
-    set({
-      messages: [],
-      status: 'idle',
-      errorMessage: null,
-      initialized: false,
-      needsOnboarding: false,
-      isOnboarded: false,
-      strategy: null,
-      tilesEnabled: false,
-      recommendations: [],
-      recommendationsSource: null,
-    }),
+  reset: () => set({ ...INITIAL }),
+
+  // ---- Konwersacje ----
+
+  setView: (view) => {
+    set({ view });
+    if (view === 'chats') void get().loadConversations();
+    if (view === 'memory') void get().loadMemory();
+  },
+
+  loadConversations: async () => {
+    try {
+      const res = await fetch('/api/coach/conversations');
+      if (!res.ok) return;
+      const data = (await res.json()) as { conversations: CoachConversation[] };
+      set({ conversations: data.conversations });
+    } catch {
+      // lista nie jest krytyczna
+    }
+  },
+
+  openConversation: async (id) => {
+    if (get().status === 'sending') return;
+    set({ view: 'chat' });
+    await loadThread(set, get, id, { kickoff: id == null });
+  },
+
+  newChat: async () => {
+    if (get().status === 'sending') return;
+    const active = get().activeConversation;
+    try {
+      const res = await fetch('/api/coach/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Chat, z którego wychodzimy, przechodzi ekstrakcję pamięci w tle.
+        body: JSON.stringify({ previousConversationId: active?.kind === 'chat' ? active.id : undefined }),
+      });
+      if (!res.ok) throw new Error(`Could not start a new chat (${res.status})`);
+      const { conversation } = (await res.json()) as { conversation: CoachConversation };
+      // Nowy chat = czysty kontekst: pusta lista wiadomości, bez GET.
+      set({
+        activeConversation: conversation,
+        messages: [],
+        view: 'chat',
+        status: 'idle',
+        errorMessage: null,
+        conversations: [conversation, ...get().conversations.filter((c) => c.id !== conversation.id)],
+      });
+    } catch (err) {
+      set({ status: 'error', errorMessage: err instanceof Error ? err.message : 'Network error' });
+    }
+  },
+
+  deleteChat: async (id) => {
+    try {
+      const res = await fetch(`/api/coach/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok) return;
+      set({ conversations: get().conversations.filter((c) => c.id !== id) });
+      // Usunięty aktywny chat → wracamy do Setupu.
+      if (get().activeConversation?.id === id) await get().openConversation(null);
+    } catch {
+      // ignorujemy — lista odświeży się przy następnym otwarciu
+    }
+  },
+
+  // ---- Pamięć ----
+
+  loadMemory: async () => {
+    try {
+      const res = await fetch('/api/coach/memory');
+      if (!res.ok) return;
+      const data = (await res.json()) as { facts: CoachMemoryFact[] };
+      set({ memory: data.facts });
+    } catch {
+      // brak pamięci nie psuje czatu
+    }
+  },
+
+  forgetFact: async (id) => {
+    const res = await fetch(`/api/coach/memory?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
+    if (res?.ok) set({ memory: get().memory.filter((f) => f.id !== id) });
+  },
+
+  forgetAll: async () => {
+    const res = await fetch('/api/coach/memory', { method: 'DELETE' }).catch(() => null);
+    if (res?.ok) set({ memory: [] });
+  },
 }));
 
 // ----------------------------------------------------------------
-// Wspólna logika tury — wysyła historię do /api/coach, dopisuje
+// Ładowanie wątku (Setup albo wskazany chat)
+// ----------------------------------------------------------------
+
+async function loadThread(
+  set: (partial: Partial<CoachState>) => void,
+  get: () => CoachState & CoachActions,
+  conversationId: string | null,
+  opts: { kickoff: boolean },
+): Promise<void> {
+  set({ status: 'loading', errorMessage: null });
+  try {
+    const url = conversationId ? `/api/coach?conversation=${encodeURIComponent(conversationId)}` : '/api/coach';
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`Failed to load chat (${res.status})`);
+    const data = (await res.json()) as ThreadResponse;
+    const tilesEnabled = data.onboardingTiles === true;
+    const isChat = data.conversation?.kind === 'chat';
+
+    set({
+      messages: data.messages,
+      needsOnboarding: data.needsOnboarding,
+      // Przy kafelkach o „onboarded" decyduje kompletny profil (sloty), nie
+      // to, że bot już coś powiedział (powitanie to jeszcze nie profil).
+      isOnboarded: tilesEnabled ? data.profileComplete === true : !data.needsOnboarding,
+      tilesEnabled,
+      strategy: data.strategy ?? get().strategy,
+      conversationsEnabled: data.conversationsEnabled === true,
+      activeConversation: data.conversation ?? null,
+      initialized: true,
+      status: 'idle',
+    });
+
+    // Setup z kompletnym profilem → plan przeliczany deterministycznie
+    // (bez AI), żeby nie znikał po odświeżeniu.
+    if (!isChat && data.strategy && get().recommendations.length === 0) {
+      const strategy = data.strategy;
+      void getRecommendations(strategy)
+        .then(({ recommendations, source }) => set({ recommendations, recommendationsSource: source }))
+        .catch(() => undefined);
+    }
+
+    // Świeży/legacy user z pustym Setupem → bot wita i zadaje 1. pytanie.
+    if (opts.kickoff && !isChat && data.needsOnboarding && data.messages.length === 0) {
+      await runTurn(set, get, ONBOARDING_KICKOFF, {
+        persistUserBubble: false,
+        extraBody: tilesEnabled ? { kickoff: true } : undefined,
+      });
+    }
+  } catch (err) {
+    set({
+      status: 'error',
+      errorMessage: err instanceof Error ? err.message : 'Network error',
+      initialized: true,
+    });
+  }
+}
+
+// ----------------------------------------------------------------
+// Wspólna logika tury — wysyła wiadomość do /api/coach, dopisuje
 // odpowiedź, a po zakończeniu onboardingu pobiera rekomendacje od C.
 // ----------------------------------------------------------------
 
@@ -203,6 +331,7 @@ async function runTurn(
   const optimistic = opts.persistUserBubble
     ? [...baseMessages, localMessage('user', userTurn.content)]
     : baseMessages;
+  const conversationId = get().activeConversation?.id;
 
   set({ messages: optimistic, status: 'sending', errorMessage: null });
 
@@ -212,7 +341,12 @@ async function runTurn(
     const res = await fetch('/api/coach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userTurn.content, strategy: get().strategy, ...opts.extraBody }),
+      body: JSON.stringify({
+        message: userTurn.content,
+        strategy: get().strategy,
+        ...(conversationId ? { conversationId } : {}),
+        ...opts.extraBody,
+      }),
     });
 
     if (!res.ok) {
@@ -244,6 +378,15 @@ async function runTurn(
       ],
       status: 'idle',
     });
+
+    // Tytuł nowego chatu nadaje serwer z 1. wiadomości — odśwież listę w tle.
+    const active = get().activeConversation;
+    if (active?.kind === 'chat' && active.title === 'New chat' && !reply.offTopic) {
+      void get().loadConversations().then(() => {
+        const updated = get().conversations.find((c) => c.id === active.id);
+        if (updated) set({ activeConversation: updated });
+      });
+    }
 
     // Onboarding domknięty → zapisz profil u C i pobierz rekomendacje.
     if (reply.onboardingComplete && reply.strategy) {
@@ -282,3 +425,4 @@ export const selectCoachMessages = (s: CoachState) => s.messages;
 export const selectCoachStatus = (s: CoachState) => s.status;
 export const selectCoachRecommendations = (s: CoachState) => s.recommendations;
 export const selectCoachIsOnboarded = (s: CoachState) => s.isOnboarded;
+export const selectIsChatActive = (s: CoachState) => s.activeConversation?.kind === 'chat';
