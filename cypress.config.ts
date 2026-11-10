@@ -1,6 +1,13 @@
 import { defineConfig } from 'cypress';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+// Czyste moduły AI v2 (bez I/O, bez aliasu @/) — testowane deterministycznie
+// w Node przez cy.task, bez dodatkowego runnera unit testów.
+import { analyzeIntent, nextAbuseState, templateReply, type GuardSlot } from './src/lib/ai/guard';
+import { parseSlotsLocally, mergeSlots, missingSlots, completeStrategy, type SlotState, type RequiredSlot } from './src/lib/coach/slots';
+import { buildPortfolioPlan, checkPlan, planToRecommendations } from './src/lib/strategy/allocate';
+import type { UserStrategy } from './src/lib/coach/types';
+import { acceptFact } from './src/lib/coach/memoryFilter';
 
 // Cypress (Node) — w odróżnieniu od Next — nie wczytuje .env.local samo.
 // Parsujemy go ręcznie (bez dodatkowej zależności) i przekazujemy wybrane
@@ -33,7 +40,57 @@ export default defineConfig({
     baseUrl: 'http://localhost:3000',
     viewportWidth: 1280,
     viewportHeight: 720,
-    setupNodeEvents(_on, config) {
+    setupNodeEvents(on, config) {
+      on('task', {
+        // Gate: klasyfikacja wiadomości + szablon odpowiedzi.
+        'guard:classify'({ text, awaitingSlot }: { text: string; awaitingSlot?: GuardSlot | null }) {
+          const a = analyzeIntent(text, { awaitingSlot: awaitingSlot ?? null });
+          return { ...a, template: templateReply(a.intent === 'injection' ? 'injection' : 'off_topic', { awaitingSlot: awaitingSlot ?? null }) };
+        },
+        // Budżet nadużyć: sekwencja off-topic (true) / w temacie (false).
+        'guard:abuse'({ sequence, maxStreak, windowMs }: { sequence: boolean[]; maxStreak: number; windowMs: number }) {
+          let state = { streak: 0, lockedUntil: null as number | null };
+          const now = 1_000_000;
+          return sequence.map((offTopic, i) => {
+            state = nextAbuseState(state, offTopic, now + i, { maxStreak, windowMs });
+            return { streak: state.streak, locked: state.lockedUntil != null && state.lockedUntil > now + i };
+          });
+        },
+        // Sloty: kolejne odpowiedzi usera → stan + czy profil domknięty (kod, nie model).
+        'slots:run'({ answers }: { answers: string[] }) {
+          let slots: SlotState = {};
+          const steps = answers.map((answer) => {
+            const awaited: RequiredSlot | null = missingSlots(slots)[0] ?? null;
+            slots = mergeSlots(slots, parseSlotsLocally(answer, awaited));
+            return { awaited, missing: missingSlots(slots) };
+          });
+          return { steps, strategy: completeStrategy(slots) };
+        },
+        // Pamięć: czy fakt przejdzie filtr (injection, długość, parafrazy).
+        'memory:accept'({ facts, existing }: { facts: string[]; existing: string[] }) {
+          return facts.map((fact) => ({ fact, accepted: acceptFact(fact, existing) }));
+        },
+        // Silnik: plan + kontrola inwariantów.
+        'plan:build'({ strategy, positions, prices }: { strategy: UserStrategy; positions: string[]; prices?: Record<string, number> }) {
+          const ctx = { positions, prices };
+          const plan = buildPortfolioPlan(strategy, ctx);
+          return {
+            check: checkPlan(plan, ctx),
+            coreShare: plan.limits.coreShare,
+            items: plan.items.map((i) => ({
+              ticker: i.entry.ticker,
+              role: i.role,
+              category: i.category.key,
+              sector: i.entry.sector,
+              risk: i.entry.risk,
+              weight: i.weight,
+              shares: i.shares ?? null,
+              themeException: i.themeException === true,
+            })),
+            recommendations: planToRecommendations(plan),
+          };
+        },
+      });
       const env = loadEnvLocal();
       // Jawnie ustawiony Cypress.env (np. cypress.env.json) ma pierwszeństwo.
       config.env.CRON_SECRET = config.env.CRON_SECRET ?? env.CRON_SECRET;

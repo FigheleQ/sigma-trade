@@ -11,7 +11,18 @@ import type {
   PositionLot,
 } from '@/lib/portfolio/types';
 
+// Prefill zlecenia z karty rekomendacji Coacha → OrderPanel otwiera BuyModal.
+// `id` rośnie przy każdym żądaniu, więc każdy OrderPanel (desktop + mobile)
+// konsumuje to samo żądanie dokładnie raz, niezależnie od kolejności efektów.
+export interface OrderPrefill {
+  id: number;
+  ticker: string;
+  qty: number;
+}
+
 interface PortfolioStore {
+  orderPrefill: OrderPrefill | null;
+  requestOrderPrefill: (ticker: string, qty: number) => void;
   portfolio: PortfolioState | null;
   trades: Trade[];
   lots: PositionLot[];
@@ -31,6 +42,16 @@ interface PortfolioStore {
 }
 
 export const usePortfolioStore = create<PortfolioStore>((set, get) => ({
+  orderPrefill: null,
+  requestOrderPrefill: (ticker, qty) =>
+    set((s) => ({
+      orderPrefill: {
+        id: (s.orderPrefill?.id ?? 0) + 1,
+        ticker: ticker.toUpperCase(),
+        // api/orders kupuje całe akcje → min. 1, bez ułamków.
+        qty: Math.max(1, Math.floor(qty)),
+      },
+    })),
   portfolio: null,
   trades: [],
   lots: [],

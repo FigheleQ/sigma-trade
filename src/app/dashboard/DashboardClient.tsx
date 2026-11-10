@@ -36,6 +36,7 @@ import MobileTickerDrawer from '@/components/market/MobileTickerDrawer';
 import MobilePortfolioBar from '@/components/market/MobilePortfolioBar';
 import CoachIntroPopup from '@/components/agents/CoachIntroPopup';
 import { cn } from '@/lib/utils';
+import { usePortfolioStore } from '@/store/portfolioStore';
 
 const SIDEBAR_WIDTH = 80; // szerokość kolumny ikon agentów
 const MIN_RIGHT_PCT = 15;
@@ -106,6 +107,14 @@ export default function DashboardClient({ agents, intervalSeconds, autoFetch, us
     localStorage.setItem(introKey, '1');
     setShowCoachIntro(false);
   }, [introKey]);
+
+  // „Place this order" z karty Coacha: na mobile panel agenta to pełnoekranowy
+  // overlay, który zasłoniłby BuyModal — zamykamy go. Desktop zostaje (panel z boku).
+  const orderPrefillId = usePortfolioStore((s) => s.orderPrefill?.id ?? 0);
+  useEffect(() => {
+    if (orderPrefillId === 0) return;
+    if (window.matchMedia('(max-width: 767px)').matches) setActiveAgent(null);
+  }, [orderPrefillId]);
 
   const openCoachFromIntro = useCallback(() => {
     localStorage.setItem(introKey, '1');

@@ -5,6 +5,16 @@
 //    jako ZAMROŻONY. Zmiana typu = uzgodnienie obu stron, jeden PR.
 //    A czyta `UserStrategy`/`Recommendation` jako kontekst rozmowy,
 //    C je produkuje. Reszta (CoachMessage/CoachTurn) należy do A.
+//
+// 📝 UZGODNIENIE A + C (AI v2, 2026-11): rozszerzenie WYŁĄCZNIE ADDYTYWNE.
+//    • `UserStrategy` + opcjonalne: horizonYears, monthlyContribution,
+//      drawdownComfort, preferredInstruments, dividendPreference, exclusions.
+//    • `Recommendation` + opcjonalne: name, category, kind, risk, role,
+//      suggestedAmount, suggestedShares, price, horizon, rationale, risks,
+//      analystConsensus, confidence.
+//    • `CoachMessage` + opcjonalne `offTopic` (pary odcięte przez guardrails).
+//    Żadne istniejące pole nie zmieniło nazwy, typu ani wymagalności —
+//    stary klient / mock / Cypress działają bez zmian.
 // ============================================================
 
 // ---- Profil inwestycyjny (produkuje C, czyta A) -------------
@@ -20,14 +30,44 @@ export interface UserStrategy {
   risk: RiskTolerance;
   budget: number; // wybrany balans startowy (USD), np. 10000 / 50000 / 100000
   interests: string[]; // sektory / motywy, np. ['Technology', 'Automotive']
+  // ---- AI v2 (opcjonalne) ----
+  horizonYears?: number; // horyzont inwestycji w latach
+  monthlyContribution?: number; // planowane dopłaty miesięczne (USD)
+  drawdownComfort?: 'low' | 'medium' | 'high'; // ile spadku user zniesie
+  preferredInstruments?: Array<'etf' | 'stocks'>;
+  dividendPreference?: boolean; // woli spółki dywidendowe
+  exclusions?: string[]; // tickery / sektory do pominięcia
 }
 
 // ---- Rekomendacja (produkuje C, pokazuje A w czacie) --------
+
+export type InstrumentKind = 'etf' | 'stock';
+export type Confidence = 'low' | 'medium' | 'high';
+
+export interface AnalystConsensus {
+  buy: number; // buy + strongBuy
+  hold: number;
+  sell: number; // sell + strongSell
+}
 
 export interface Recommendation {
   ticker: string;
   reason: string; // krótkie uzasadnienie pod profil usera
   suggestedWeight: number; // sugerowana waga w portfelu, 0..1
+  // ---- AI v2 (opcjonalne) ----
+  name?: string;
+  category?: string;
+  kind?: InstrumentKind;
+  risk?: RiskTolerance;
+  role?: 'core' | 'satellite';
+  suggestedAmount?: number; // USD z budżetu
+  suggestedShares?: number; // z żywej ceny (może być ułamkowa)
+  price?: number; // cena użyta do wyliczenia akcji
+  horizon?: 'short' | 'mid' | 'long';
+  rationale?: string[]; // 2–3 punkty „dlaczego pod TWÓJ profil"
+  risks?: string[]; // „co może pójść nie tak"
+  analystConsensus?: AnalystConsensus | null;
+  confidence?: Confidence;
 }
 
 // ---- Wiadomości czatu (własność A) --------------------------
@@ -46,6 +86,30 @@ export interface CoachMessage {
   id: string;
   role: CoachRole;
   content: string;
+  createdAt: string; // ISO
+  offTopic?: boolean; // AI v2: para odcięta przez guardrails (pomijana w historii modelu)
+}
+
+// ---- Konwersacje i pamięć Coacha (własność A, migracja 0008) --
+
+// `setup` — jedna, przypięta: onboarding, profil, plan.
+// `chat`  — luźne rozmowy, każda z własnym kontekstem.
+export type CoachConversationKind = 'setup' | 'chat';
+
+export interface CoachConversation {
+  id: string;
+  kind: CoachConversationKind;
+  title: string;
+  updatedAt: string; // ISO
+}
+
+export type CoachMemoryCategory = 'goal' | 'preference' | 'constraint' | 'experience' | 'other';
+
+// Krótki fakt o userze wyciągnięty z rozmów — widoczny i usuwalny przez usera.
+export interface CoachMemoryFact {
+  id: string;
+  fact: string;
+  category: CoachMemoryCategory;
   createdAt: string; // ISO
 }
 
